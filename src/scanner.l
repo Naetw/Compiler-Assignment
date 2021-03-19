@@ -19,7 +19,64 @@ static void concatenateString(const char *yytext_ptr);
 %}
 
 %%
+    /* Delimiter */
+"," { TOKEN_CHAR(','); }
+";" { TOKEN_CHAR(';'); }
+":" { TOKEN_CHAR(':'); }
 "(" { TOKEN_CHAR('('); }
+")" { TOKEN_CHAR(')'); }
+"[" { TOKEN_CHAR('['); }
+"]" { TOKEN_CHAR(']'); }
+
+    /* Operator */
+"+"   { TOKEN_CHAR('+'); }
+"-"   { TOKEN_CHAR('-'); }
+"*"   { TOKEN_CHAR('*'); }
+"/"   { TOKEN_CHAR('/'); }
+"mod" { TOKEN(mod); }
+":="  { TOKEN(:=); }
+"<"   { TOKEN_CHAR('<'); }
+"<="  { TOKEN(<=); }
+"<>"  { TOKEN(<>); }
+">="  { TOKEN(>=); }
+">"   { TOKEN_CHAR('>'); }
+"="   { TOKEN_CHAR('='); }
+"and" { TOKEN(and); }
+"or"  { TOKEN(or); }
+"not" { TOKEN(not); }
+
+    /* Reserved Word */
+"var"     { TOKEN(KWvar); }
+"array"   { TOKEN(KWarray); }
+"of"      { TOKEN(KWof); }
+"boolean" { TOKEN(KWboolean); }
+"integer" { TOKEN(KWinteger); }
+"real"    { TOKEN(KWreal); }
+"string"  { TOKEN(KWstring); }
+
+"true"    { TOKEN(KWtrue); }
+"false"   { TOKEN(KWfalse); }
+
+"def"     { TOKEN(KWdef); }
+"return"  { TOKEN(KWreturn); }
+
+"begin"   { TOKEN(KWbegin); }
+"end"     { TOKEN(KWend); }
+
+"while"   { TOKEN(KWwhile); }
+"do"      { TOKEN(KWdo); }
+
+"if"      { TOKEN(KWif); }
+"then"    { TOKEN(KWthen); }
+"else"    { TOKEN(KWelse); }
+
+"for"     { TOKEN(KWfor); }
+"to"      { TOKEN(KWto); }
+
+"print"   { TOKEN(KWprint); }
+"read"    { TOKEN(KWread); }
+
+    /* Newline */
 \n {
     if (opt_src) {
         printf("%d: %s\n", line_num, buffer);

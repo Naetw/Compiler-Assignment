@@ -1,20 +1,20 @@
 %{
 #include <stdint.h>
 
-#define LIST                strCat(yytext)
+#define LIST                concatenateString(yytext)
 #define TOKEN(t)            { LIST; if (opt_tok) printf("<%s>\n", #t); }
 #define TOKEN_CHAR(t)       { LIST; if (opt_tok) printf("<%c>\n", (t)); }
 #define TOKEN_STRING(t, s)  { LIST; if (opt_tok) printf("<%s: %s>\n", #t, (s)); }
 #define MAX_LINE_LENG       512
 
 uint32_t line_num = 1;
-char buffer[MAX_LINE_LENG];
+static char buffer[MAX_LINE_LENG];
 
-static int32_t opt_src = 1;
-static int32_t opt_tok = 1;
+static uint32_t opt_src = 1;
+static uint32_t opt_tok = 1;
 static char *buffer_ptr = buffer;
 
-static void strCat(const char *Text);
+static void concatenateString(const char *yytext_ptr);
 
 %}
 
@@ -37,9 +37,11 @@ static void strCat(const char *Text);
 
 %%
 
-static void strCat(const char *Text) {
-    while (*Text) {
-        *buffer_ptr++ = *Text++;
+static void concatenateString(const char *yytext_ptr) {
+    while (*yytext_ptr) {
+        *buffer_ptr = *yytext_ptr;
+        ++buffer_ptr;
+        ++yytext_ptr;
     }
     *buffer_ptr = '\0';
 }

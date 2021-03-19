@@ -12,11 +12,15 @@ static char buffer[MAX_LINE_LENG];
 
 static uint32_t opt_src = 1;
 static uint32_t opt_tok = 1;
+static char string_literal[MAX_LINE_LENG];
 static char *buffer_ptr = buffer;
 
 static void concatenateString(const char *yytext_ptr);
 
 %}
+
+integer 0|[1-9][0-9]*
+float {integer}\.(0|[0-9]*[1-9])
 
 %%
     /* Delimiter */
@@ -75,6 +79,44 @@ static void concatenateString(const char *yytext_ptr);
 
 "print"   { TOKEN(KWprint); }
 "read"    { TOKEN(KWread); }
+
+    /* Identifier */
+[a-zA-Z][a-zA-Z0-9]* { TOKEN_STRING(id, yytext); }
+
+    /* Integer (decimal/octal) */
+{integer} { TOKEN_STRING(integer, yytext); }
+0[0-7]+   { TOKEN_STRING(oct_integer, yytext); }
+
+    /* Floating-Point */
+{float} { TOKEN_STRING(float, yytext); }
+
+    /* Scientific Notation [Ee][+-]?[0-9]+ */
+({integer}|{float})[Ee][+-]?({integer}) { TOKEN_STRING(scientific, yytext); }
+
+    /* String */
+\"([^"\n]|\"\")*\" {
+    char *yyt_ptr = yytext + 1;  // +1 for skipping the first double quote "
+    char *str_ptr = string_literal;
+
+    while (*yyt_ptr) {
+        if (*yyt_ptr == '"') {
+            // Handle the situation of two double quotes "" in string literal
+            if (*(yyt_ptr + 1) == '"') {
+                *str_ptr = *yyt_ptr;
+                ++str_ptr;
+                yyt_ptr += 2; // move to the next character of ""
+            } else {
+                ++yyt_ptr;
+            }
+        } else {  // normal character
+            *str_ptr = *yyt_ptr;
+            ++str_ptr;
+            ++yyt_ptr;
+        }
+    }
+    *str_ptr = '\0';
+    TOKEN_STRING(string, string_literal);
+}
 
     /* Newline */
 \n {

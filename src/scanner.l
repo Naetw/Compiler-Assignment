@@ -22,6 +22,9 @@ static void concatenateString(const char *yytext_ptr);
 integer 0|[1-9][0-9]*
 float {integer}\.(0|[0-9]*[1-9])
 
+    /* exclusive start condition */
+%x CCOMMENT
+
 %%
     /* Delimiter */
 "," { TOKEN_CHAR(','); }
@@ -118,8 +121,33 @@ float {integer}\.(0|[0-9]*[1-9])
     TOKEN_STRING(string, string_literal);
 }
 
+    /* Whitespace */
+[ \t]+ { LIST; }
+
+    /* Pseudocomment */
+"//&"[ST][+-].* {
+    LIST;
+    char option = yytext[3];
+    switch (option) {
+    case 'S':
+        opt_src = (yytext[4] == '+') ? 1 : 0;
+        break;
+    case 'T':
+        opt_tok = (yytext[4] == '+') ? 1 : 0;
+        break;
+    }
+}
+
+    /* C++ Style Comment */
+"//".* { LIST; }
+
+    /* C Style Comment */
+"/*"           { LIST; BEGIN(CCOMMENT); }
+<CCOMMENT>"*/" { LIST; BEGIN(INITIAL); }
+<CCOMMENT>.    { LIST; }
+
     /* Newline */
-\n {
+<INITIAL,CCOMMENT>\n {
     if (opt_src) {
         printf("%d: %s\n", line_num, buffer);
     }
@@ -128,7 +156,7 @@ float {integer}\.(0|[0-9]*[1-9])
     buffer_ptr = buffer;
 }
 
-    /* Catch the character which is not accepted by rules above */
+    /* Catch the character which is not accepted by all rules above */
 . {
     printf("Error at line %d: bad character \"%s\"\n", line_num, yytext);
     exit(-1);

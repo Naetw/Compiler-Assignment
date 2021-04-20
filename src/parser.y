@@ -1,11 +1,12 @@
 %{
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 
-extern int32_t line_num;   /* declared in scanner.l */
-extern char buffer[512];  /* declared in scanner.l */
+extern int32_t line_num;  /* declared in scanner.l */
+extern char buffer[];     /* declared in scanner.l */
 extern FILE *yyin;        /* declared by lex */
 extern char *yytext;      /* declared by lex */
 
@@ -380,7 +381,9 @@ int main(int argc, const char *argv[]) {
     }
 
     yyin = fopen(argv[1], "r");
-    assert(yyin != NULL && "fopen() fails.");
+    if (yyin == NULL) {
+        perror("fopen() failed:");
+    }
 
     yyparse();
 

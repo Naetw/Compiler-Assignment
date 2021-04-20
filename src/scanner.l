@@ -1,29 +1,28 @@
 %{
 #include <stdint.h>
 
-#include "parser.h"
-
-#define LIST                strCat(yytext)
+#define LIST                concatenateString(yytext)
 #define TOKEN(t)            { LIST; if (opt_tok) printf("<%s>\n", #t); }
 #define TOKEN_CHAR(t)       { LIST; if (opt_tok) printf("<%c>\n", (t)); }
 #define TOKEN_STRING(t, s)  { LIST; if (opt_tok) printf("<%s: %s>\n", #t, (s)); }
 #define MAX_LINE_LENG       512
 
 uint32_t line_num = 1;
-char buffer[MAX_LINE_LENG];
+static char buffer[MAX_LINE_LENG];
 
-static int32_t opt_src = 1;
-static int32_t opt_tok = 1;
+static uint32_t opt_src = 1;
+static uint32_t opt_tok = 1;
 static char string_literal[MAX_LINE_LENG];
 static char *buffer_ptr = buffer;
 
-static void strCat(const char *Text);
+static void concatenateString(const char *yytext_ptr);
 
 %}
 
 integer 0|[1-9][0-9]*
 float {integer}\.(0|[0-9]*[1-9])
 
+    /* exclusive start condition */
 %x CCOMMENT
 
 %%
@@ -53,29 +52,36 @@ float {integer}\.(0|[0-9]*[1-9])
 "or"  { TOKEN(or); }
 "not" { TOKEN(not); }
 
-    /* Keyword */
+    /* Reserved Word */
+"var"     { TOKEN(KWvar); }
 "array"   { TOKEN(KWarray); }
-"begin"   { TOKEN(KWbegin); }
-"boolean" { TOKEN(KWboolean); }
-"def"     { TOKEN(KWdef); }
-"do"      { TOKEN(KWdo); }
-"else"    { TOKEN(KWelse); }
-"end"     { TOKEN(KWend); }
-"false"   { TOKEN(KWfalse); }
-"for"     { TOKEN(KWfor); }
-"integer" { TOKEN(KWinteger); }
-"if"      { TOKEN(KWif); }
 "of"      { TOKEN(KWof); }
-"print"   { TOKEN(KWprint); }
-"read"    { TOKEN(KWread); }
+"boolean" { TOKEN(KWboolean); }
+"integer" { TOKEN(KWinteger); }
 "real"    { TOKEN(KWreal); }
 "string"  { TOKEN(KWstring); }
-"then"    { TOKEN(KWthen); }
-"to"      { TOKEN(KWto); }
+
 "true"    { TOKEN(KWtrue); }
+"false"   { TOKEN(KWfalse); }
+
+"def"     { TOKEN(KWdef); }
 "return"  { TOKEN(KWreturn); }
-"var"     { TOKEN(KWvar); }
+
+"begin"   { TOKEN(KWbegin); }
+"end"     { TOKEN(KWend); }
+
 "while"   { TOKEN(KWwhile); }
+"do"      { TOKEN(KWdo); }
+
+"if"      { TOKEN(KWif); }
+"then"    { TOKEN(KWthen); }
+"else"    { TOKEN(KWelse); }
+
+"for"     { TOKEN(KWfor); }
+"to"      { TOKEN(KWto); }
+
+"print"   { TOKEN(KWprint); }
+"read"    { TOKEN(KWread); }
 
     /* Identifier */
 [a-zA-Z][a-zA-Z0-9]* { TOKEN_STRING(id, yytext); }
@@ -92,24 +98,29 @@ float {integer}\.(0|[0-9]*[1-9])
 
     /* String */
 \"([^"\n]|\"\")*\" {
-    char *yyt_ptr = yytext;
+    char *yyt_ptr = yytext + 1;  // +1 for skipping the first double quote "
     char *str_ptr = string_literal;
 
-    /* Condition guard of the end of string literal
-       Check only when *yyt_ptr == '"' */
-    while (*(yyt_ptr + 1) != '\0') {
-        ++yyt_ptr;
-
-        /* Handle the situation of double quotes */
-        if (*yyt_ptr == '"' && *(yyt_ptr + 1) != '\0')
-            *str_ptr++ = *yyt_ptr++;
-
-        while (*yyt_ptr != '"')
-            *str_ptr++ = *yyt_ptr++;
+    while (*yyt_ptr) {
+        if (*yyt_ptr == '"') {
+            // Handle the situation of two double quotes "" in string literal
+            if (*(yyt_ptr + 1) == '"') {
+                *str_ptr = *yyt_ptr;
+                ++str_ptr;
+                yyt_ptr += 2; // move to the next character of ""
+            } else {
+                ++yyt_ptr;
+            }
+        } else {  // normal character
+            *str_ptr = *yyt_ptr;
+            ++str_ptr;
+            ++yyt_ptr;
+        }
     }
     *str_ptr = '\0';
     TOKEN_STRING(string, string_literal);
 }
+
     /* Whitespace */
 [ \t]+ { LIST; }
 
@@ -145,7 +156,7 @@ float {integer}\.(0|[0-9]*[1-9])
     buffer_ptr = buffer;
 }
 
-    /* Catch the character which is not accepted by rules above */
+    /* Catch the character which is not accepted by all rules above */
 . {
     printf("Error at line %d: bad character \"%s\"\n", line_num, yytext);
     exit(-1);
@@ -153,9 +164,11 @@ float {integer}\.(0|[0-9]*[1-9])
 
 %%
 
-static void strCat(const char *Text) {
-    while (*Text) {
-        *buffer_ptr++ = *Text++;
+static void concatenateString(const char *yytext_ptr) {
+    while (*yytext_ptr) {
+        *buffer_ptr = *yytext_ptr;
+        ++buffer_ptr;
+        ++yytext_ptr;
     }
     *buffer_ptr = '\0';
 }

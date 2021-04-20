@@ -1,9 +1,10 @@
+parser.output
+parser.h
+parser.c
+parser
 scanner.c
-scanner
 result/
-*.result
 
-docker/.history
 .vscode
 .bash_history
 

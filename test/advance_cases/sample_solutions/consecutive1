@@ -1,0 +1,14 @@
+1: //&T-
+2: consecutive1;
+3: 
+4: begin
+5:     var b: integer;
+6:     b := 2;
+7:     b := --b;
+8: 
+9: end
+10: end
+
+|--------------------------------|
+|  There is no syntactic error!  |
+|--------------------------------|

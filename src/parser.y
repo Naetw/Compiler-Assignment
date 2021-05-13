@@ -20,6 +20,7 @@
 #include "AST/return.hpp"
 
 #include <cassert>
+#include <errno.h>
 #include <cstdlib>
 #include <cstdint>
 #include <cstdio>
@@ -34,16 +35,14 @@ typedef struct YYLTYPE {
     uint32_t last_column;
 } yyltype;
 
-/* Declared by scanner.l */
-extern uint32_t line_num;
-extern char buffer[512];
-extern FILE *yyin;
-extern char *yytext;
-/* End */
+extern int32_t line_num;  /* declared in scanner.l */
+extern char buffer[];     /* declared in scanner.l */
+extern FILE *yyin;        /* declared by lex */
+extern char *yytext;      /* declared by lex */
 
 static AstNode *root;
 
-extern "C" int yylex(void);
+extern "C" int yylex(void); 
 static void yyerror(const char *msg);
 extern int yylex_destroy(void);
 %}
@@ -61,6 +60,8 @@ extern int yylex_destroy(void);
 };
 
 %type <identifier> ProgramName ID
+
+    /* Follow the order in scanner.l */
 
     /* Delimiter */
 %token COMMA SEMICOLON COLON
@@ -94,9 +95,6 @@ extern int yylex_destroy(void);
 %token STRING_LITERAL
 
 %%
-    /*
-       Program Units
-                     */
 
 Program:
     ProgramName SEMICOLON
@@ -411,6 +409,7 @@ Expression:
             */
 Epsilon:
 ;
+
 %%
 
 void yyerror(const char *msg) {
@@ -434,7 +433,9 @@ int main(int argc, const char *argv[]) {
     }
 
     yyin = fopen(argv[1], "r");
-    assert(yyin != NULL && "fopen() fails.");
+    if (yyin == NULL) {
+        perror("fopen() failed:");
+    }
 
     yyparse();
 

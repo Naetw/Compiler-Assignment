@@ -18,6 +18,7 @@
 #include "AST/while.hpp"
 #include "AST/for.hpp"
 #include "AST/return.hpp"
+#include "AST/AstDumper.hpp"
 
 #include <cassert>
 #include <errno.h>
@@ -440,7 +441,8 @@ int main(int argc, const char *argv[]) {
     yyparse();
 
     if (argc >= 3 && strcmp(argv[2], "--dump-ast") == 0) {
-        root->print();
+        AstDumper ast_dumper;
+        root->accept(ast_dumper);
     }
 
     printf("\n"

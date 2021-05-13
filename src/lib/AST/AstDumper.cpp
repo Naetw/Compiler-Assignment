@@ -19,9 +19,6 @@
 
 #include <cstdio>
 
-// FIXME: remove this line if you choose to use visitor pattern with this template
-#ifdef I_WANT_TO_USE_VISITOR_PATTERN
-
 void AstDumper::incrementIndentation() {
     m_indentation += m_indentation_stride;
 }
@@ -236,6 +233,3 @@ void AstDumper::visit(ReturnNode &p_return) {
     p_return.visitChildNodes(*this);
     decrementIndentation();
 }
-
-// FIXME: remove this line if you choose to use visitor pattern with this template
-#endif

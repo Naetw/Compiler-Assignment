@@ -1,5 +1,5 @@
-#ifndef __VISITOR_H
-#define __VISITOR_H
+#ifndef VISITOR_AST_NODE_VISITOR_H
+#define VISITOR_AST_NODE_VISITOR_H
 
 // Forward declaration of AST nodes
 class ProgramNode;

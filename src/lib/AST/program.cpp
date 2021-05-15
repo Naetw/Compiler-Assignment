@@ -1,35 +1,16 @@
 #include "AST/program.hpp"
+#include "AST/AstDumper.hpp"
+#include "AST/CompoundStatement.hpp"
 
-// TODO
-ProgramNode::ProgramNode(const uint32_t line, const uint32_t col,
-                         const char * const p_name)
-    : AstNode{line, col}, name(p_name) {}
-
-const char *ProgramNode::getNameCString() const { return name.c_str(); }
+#include <algorithm>
 
 void ProgramNode::visitChildNodes(AstNodeVisitor &p_visitor) {
-    /* TODO
-     *
-     * for (auto &decl : var_decls) {
-     *     decl->accept(p_visitor);
-     * }
-     *
-     * // functions
-     *
-     * body->accept(p_visitor);
-     */
+    auto visit_decl_node = [&](auto &decl_node) {
+        decl_node->accept(p_visitor);
+    };
+    for_each(m_decl_nodes.begin(), m_decl_nodes.end(), visit_decl_node);
+
+    // TODO: functions
+
+    m_body->accept(p_visitor);
 }
-
-
-// void ProgramNode::visitChildNodes(AstNodeVisitor &p_visitor) { // visitor pattern version
-//     /* TODO
-//      *
-//      * for (auto &decl : var_decls) {
-//      *     decl->accept(p_visitor);
-//      * }
-//      *
-//      * // functions
-//      *
-//      * body->accept(p_visitor);
-//      */
-// }

@@ -74,8 +74,16 @@ float {integer}\.(0|[0-9]*[1-9])
 "real"    { TOKEN(KWreal); return REAL; }
 "string"  { TOKEN(KWstring); return STRING; }
 
-"true"    { TOKEN(KWtrue); return TRUE; }
-"false"   { TOKEN(KWfalse); return FALSE; }
+"true"    {
+    TOKEN(KWtrue);
+    yylval.boolean = true;
+    return TRUE;
+}
+"false"   {
+    TOKEN(KWfalse);
+    yylval.boolean = false;
+    return FALSE;
+}
 
 "def"     { TOKEN(KWdef); return DEF; }
 "return"  { TOKEN(KWreturn); return RETURN; }
@@ -104,14 +112,30 @@ float {integer}\.(0|[0-9]*[1-9])
 }
 
     /* Integer (decimal/octal) */
-{integer} { TOKEN_STRING(integer, yytext); return INT_LITERAL; }
-0[0-7]+   { TOKEN_STRING(oct_integer, yytext); return INT_LITERAL; }
+{integer} {
+    TOKEN_STRING(integer, yytext);
+    yylval.integer = strtol(yytext, NULL, 10);
+    return INT_LITERAL;
+}
+0[0-7]+   {
+    TOKEN_STRING(oct_integer, yytext);
+    yylval.integer = strtol(yytext, NULL, 8);
+    return INT_LITERAL;
+}
 
     /* Floating-Point */
-{float} { TOKEN_STRING(float, yytext); return REAL_LITERAL; }
+{float} {
+    TOKEN_STRING(float, yytext);
+    yylval.real = atof(yytext);
+    return REAL_LITERAL;
+}
 
     /* Scientific Notation [Ee][+-]?[0-9]+ */
-({integer}|{float})[Ee][+-]?({integer}) { TOKEN_STRING(scientific, yytext); return REAL_LITERAL; }
+({integer}|{float})[Ee][+-]?({integer}) {
+    TOKEN_STRING(scientific, yytext);
+    yylval.real = atof(yytext);
+    return REAL_LITERAL;
+}
 
     /* String */
 \"([^"\n]|\"\")*\" {
@@ -136,6 +160,7 @@ float {integer}\.(0|[0-9]*[1-9])
     }
     *str_ptr = '\0';
     TOKEN_STRING(string, string_literal);
+    yylval.string = strdup(string_literal);
     return STRING_LITERAL;
 }
 

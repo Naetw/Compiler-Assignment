@@ -1,12 +1,13 @@
-#ifndef __AST_EXPRESSION_NODE_H
-#define __AST_EXPRESSION_NODE_H
+#ifndef AST_EXPRESSION_NODE_H
+#define AST_EXPRESSION_NODE_H
 
 #include "AST/ast.hpp"
 
 class ExpressionNode : public AstNode {
   public:
-    ExpressionNode(const uint32_t line, const uint32_t col);
     ~ExpressionNode() = default;
+    ExpressionNode(const uint32_t line, const uint32_t col)
+        : AstNode{line, col} {}
 
   protected:
     // for carrying type of result of an expression

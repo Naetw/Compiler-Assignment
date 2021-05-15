@@ -248,7 +248,10 @@ ReturnType:
                                    */
 
 Declaration:
-    VAR IdList COLON Type SEMICOLON
+    VAR IdList COLON Type SEMICOLON {
+        $$ = new DeclNode(@1.first_line, @1.first_column, $2, $4);
+        delete $2;
+    }
     |
     VAR IdList COLON LiteralConstant SEMICOLON {
         $$ = new DeclNode(@1.first_line, @1.first_column, $2, $4);

@@ -25,9 +25,11 @@ class DeclNode final : public AstNode {
     ~DeclNode() = default;
 
     // variable declaration
-    DeclNode(const uint32_t line, const uint32_t col
-             /* TODO: identifiers, type */)
-        : AstNode{line, col} {}
+    DeclNode(const uint32_t line, const uint32_t col,
+             const std::vector<IdInfo> *const p_ids, PType *p_type)
+        : AstNode{line, col} {
+        init(p_ids, PTypeSharedPtr{p_type}, nullptr);
+    }
 
     // constant variable declaration
     DeclNode(const uint32_t line, const uint32_t col,

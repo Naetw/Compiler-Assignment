@@ -87,6 +87,7 @@ extern int yylex_destroy(void);
     std::vector<IdInfo> *ids_ptr;
     std::vector<uint64_t> *dimensions_ptr;
     std::vector<std::unique_ptr<FunctionNode>> *funcs_ptr;
+    std::vector<std::unique_ptr<AstNode>> *nodes_ptr;
 };
 
 %type <identifier> ProgramName ID FunctionName
@@ -96,6 +97,7 @@ extern int yylex_destroy(void);
 %type <boolean> TRUE FALSE
 %type <sign> NegOrNot
 
+%type <node> Statement
 %type <type_ptr> Type ScalarType ArrType ReturnType
 %type <decl_ptr> Declaration FormalArg
 %type <compound_stmt_ptr> CompoundStatement
@@ -106,6 +108,7 @@ extern int yylex_destroy(void);
 %type <ids_ptr> IdList
 %type <dimensions_ptr> ArrDecl
 %type <funcs_ptr> FunctionList Functions
+%type <nodes_ptr> StatementList Statements
 
     /* Follow the order in scanner.l */
 
@@ -412,7 +415,9 @@ IntegerAndReal:
                   */
 
 Statement:
-    CompoundStatement
+    CompoundStatement {
+        $$ = static_cast<AstNode *>($1);
+    }
     |
     Simple
     |
@@ -432,7 +437,8 @@ CompoundStatement:
     DeclarationList
     StatementList
     END {
-        $$ = new CompoundStatementNode(@1.first_line, @1.first_column, *$2);
+        $$ = new CompoundStatementNode(@1.first_line, @1.first_column,
+                                       *$2, *$3);
     }
 ;
 
@@ -511,15 +517,23 @@ Expressions:
 ;
 
 StatementList:
-    Epsilon
+    Epsilon {
+        $$ = new std::vector<std::unique_ptr<AstNode>>();
+    }
     |
     Statements
 ;
 
 Statements:
-    Statement
+    Statement {
+        $$ = new std::vector<std::unique_ptr<AstNode>>();
+        $$->emplace_back($1);
+    }
     |
-    Statements Statement
+    Statements Statement {
+        $1->emplace_back($2);
+        $$ = $1;
+    }
 ;
 
 Expression:

@@ -10,17 +10,18 @@
 class CompoundStatementNode final : public AstNode {
   public:
     using DeclNodes = std::vector<std::unique_ptr<DeclNode>>;
+    using StmtNodes = std::vector<std::unique_ptr<AstNode>>;
 
   private:
-    // TODO: statements
     DeclNodes m_decl_nodes;
+    StmtNodes m_stmt_nodes;
 
   public:
     ~CompoundStatementNode() = default;
     CompoundStatementNode(const uint32_t line, const uint32_t col,
-                          DeclNodes &p_decl_nodes
-                          /* TODO: declarations, statements */)
-        : AstNode{line, col}, m_decl_nodes(std::move(p_decl_nodes)) {}
+                          DeclNodes &p_decl_nodes, StmtNodes &p_stmt_nodes)
+        : AstNode{line, col}, m_decl_nodes(std::move(p_decl_nodes)),
+          m_stmt_nodes(std::move(p_stmt_nodes)){}
 
     void accept(AstNodeVisitor &p_visitor) override {
         p_visitor.visit(*this);

@@ -107,14 +107,14 @@ extern int yylex_destroy(void);
 %type <compound_stmt_ptr> CompoundStatement
 %type <constant_value_node_ptr> LiteralConstant StringAndBoolean
 %type <func_ptr> Function FunctionDeclaration FunctionDefinition
-%type <expr_ptr> Expression IntegerAndReal FunctionInvocation
+%type <expr_ptr> Expression IntegerAndReal FunctionInvocation VariableReference
 
 %type <decls_ptr> DeclarationList Declarations FormalArgList FormalArgs
 %type <ids_ptr> IdList
 %type <dimensions_ptr> ArrDecl
 %type <funcs_ptr> FunctionList Functions
 %type <nodes_ptr> StatementList Statements
-%type <exprs_ptr> ExpressionList Expressions
+%type <exprs_ptr> ExpressionList Expressions ArrRefList ArrRefs
 
     /* Follow the order in scanner.l */
 
@@ -467,29 +467,47 @@ CompoundStatement:
 ;
 
 Simple:
-    VariableReference ASSIGN Expression SEMICOLON
+    VariableReference ASSIGN Expression SEMICOLON {
+        $$ = new AssignmentNode(@2.first_line, @2.first_column,
+                                dynamic_cast<VariableReferenceNode *>($1), $3);
+    }
     |
     PRINT Expression SEMICOLON {
         $$ = new PrintNode(@1.first_line, @1.first_column, $2);
     }
     |
-    READ VariableReference SEMICOLON
+    READ VariableReference SEMICOLON {
+        $$ = new ReadNode(@1.first_line, @1.first_column,
+                          dynamic_cast<VariableReferenceNode *>($2));
+    }
 ;
 
 VariableReference:
-    ID ArrRefList
+    ID ArrRefList {
+        $$ = new VariableReferenceNode(@1.first_line, @1.first_column, $1, *$2);
+        free($1);
+        delete $2;
+    }
 ;
 
 ArrRefList:
-    Epsilon
+    Epsilon {
+        $$ = new std::vector<std::unique_ptr<ExpressionNode>>();
+    }
     |
     ArrRefs
 ;
 
 ArrRefs:
-    L_BRACKET Expression R_BRACKET
+    L_BRACKET Expression R_BRACKET {
+        $$ = new std::vector<std::unique_ptr<ExpressionNode>>();
+        $$->emplace_back($2);
+    }
     |
-    ArrRefs L_BRACKET Expression R_BRACKET
+    ArrRefs L_BRACKET Expression R_BRACKET {
+        $1->emplace_back($3);
+        $$ = $1;
+    }
 ;
 
 Condition:

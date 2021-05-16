@@ -1,18 +1,9 @@
 #include "AST/VariableReference.hpp"
 
-// TODO
-VariableReferenceNode::VariableReferenceNode(const uint32_t line,
-                                             const uint32_t col)
-    : ExpressionNode{line, col} {}
+#include <algorithm>
 
-// TODO
-// VariableReferenceNode::VariableReferenceNode(const uint32_t line,
-//                                              const uint32_t col)
-//     : ExpressionNode{line, col} {}
+void VariableReferenceNode::visitChildNodes(AstNodeVisitor &p_visitor) {
+    auto visit_ast_node = [&](auto &ast_node) { ast_node->accept(p_visitor); };
 
-// TODO: You may use code snippets in AstDumper.cpp
-void VariableReferenceNode::print() {}
-
-// void VariableReferenceNode::visitChildNodes(AstNodeVisitor &p_visitor) {
-//     // TODO
-// }
+    for_each(m_indices.begin(), m_indices.end(), visit_ast_node);
+}

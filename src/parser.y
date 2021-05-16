@@ -101,7 +101,7 @@ extern int yylex_destroy(void);
 %type <boolean> TRUE FALSE
 %type <sign> NegOrNot
 
-%type <node> Statement Simple Condition While
+%type <node> Statement Simple Condition While For Return FunctionCall
 %type <type_ptr> Type ScalarType ArrType ReturnType
 %type <decl_ptr> Declaration FormalArg
 %type <compound_stmt_ptr> CompoundStatement ElseOrNot
@@ -541,11 +541,48 @@ While:
 For:
     FOR ID ASSIGN INT_LITERAL TO INT_LITERAL DO
     CompoundStatement
-    END DO
+    END DO {
+        Constant::ConstantValue value;
+        Constant *constant;
+        ConstantValueNode *constant_value_node;
+
+        // DeclNode
+        auto *ids = new std::vector<IdInfo>{IdInfo(@2.first_line, @2.first_column,
+                                                   $2)};
+        auto *type = new PType(PType::PrimitiveTypeEnum::kIntegerType);
+        auto *var_decl = new DeclNode(@2.first_line, @2.first_column, ids, type);
+
+        // AssignmentNode
+        auto *var_ref = new VariableReferenceNode(@2.first_line, @2.first_column, $2);
+        value.integer = static_cast<int64_t>($4);
+        constant = new Constant(
+            std::make_shared<PType>(PType::PrimitiveTypeEnum::kIntegerType),
+            value);
+        constant_value_node = new ConstantValueNode(@4.first_line, @4.first_column,
+                                                    constant);
+        auto *assignment = new AssignmentNode(@3.first_line, @3.first_column,
+                                              var_ref, constant_value_node);
+
+        // ExpressionNode
+        value.integer = static_cast<int64_t>($6);
+        constant = new Constant(
+            std::make_shared<PType>(PType::PrimitiveTypeEnum::kIntegerType),
+            value);
+        constant_value_node = new ConstantValueNode(@6.first_line, @6.first_column,
+                                                    constant);
+
+        $$ = new ForNode(@1.first_line, @1.first_column,
+                         var_decl, assignment, constant_value_node,
+                         $8);
+        free($2);
+        delete ids;
+    }
 ;
 
 Return:
-    RETURN Expression SEMICOLON
+    RETURN Expression SEMICOLON {
+        $$ = new ReturnNode(@1.first_line, @1.first_column, $2);
+    }
 ;
 
 FunctionCall:

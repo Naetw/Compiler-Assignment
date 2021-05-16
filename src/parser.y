@@ -20,6 +20,7 @@
 #include "AST/return.hpp"
 
 #include "AST/constant.hpp"
+#include "AST/operator.hpp"
 
 #include "AST/AstDumper.hpp"
 
@@ -63,6 +64,7 @@ extern int yylex_destroy(void);
     class ConstantValueNode;
     class CompoundStatementNode;
     class FunctionNode;
+    class ExpressionNode;
 }
 
     /* For yylval */
@@ -82,12 +84,14 @@ extern int yylex_destroy(void);
     CompoundStatementNode *compound_stmt_ptr;
     ConstantValueNode *constant_value_node_ptr;
     FunctionNode *func_ptr;
+    ExpressionNode *expr_ptr;
 
     std::vector<std::unique_ptr<DeclNode>> *decls_ptr;
     std::vector<IdInfo> *ids_ptr;
     std::vector<uint64_t> *dimensions_ptr;
     std::vector<std::unique_ptr<FunctionNode>> *funcs_ptr;
     std::vector<std::unique_ptr<AstNode>> *nodes_ptr;
+    std::vector<std::unique_ptr<ExpressionNode>> *exprs_ptr;
 };
 
 %type <identifier> ProgramName ID FunctionName
@@ -97,18 +101,20 @@ extern int yylex_destroy(void);
 %type <boolean> TRUE FALSE
 %type <sign> NegOrNot
 
-%type <node> Statement
+%type <node> Statement Simple
 %type <type_ptr> Type ScalarType ArrType ReturnType
 %type <decl_ptr> Declaration FormalArg
 %type <compound_stmt_ptr> CompoundStatement
 %type <constant_value_node_ptr> LiteralConstant StringAndBoolean
 %type <func_ptr> Function FunctionDeclaration FunctionDefinition
+%type <expr_ptr> Expression IntegerAndReal FunctionInvocation
 
 %type <decls_ptr> DeclarationList Declarations FormalArgList FormalArgs
 %type <ids_ptr> IdList
 %type <dimensions_ptr> ArrDecl
 %type <funcs_ptr> FunctionList Functions
 %type <nodes_ptr> StatementList Statements
+%type <exprs_ptr> ExpressionList Expressions
 
     /* Follow the order in scanner.l */
 
@@ -405,9 +411,27 @@ StringAndBoolean:
 ;
 
 IntegerAndReal:
-    INT_LITERAL
+    INT_LITERAL {
+        Constant::ConstantValue value;
+        value.integer = static_cast<int64_t>($1);
+        auto * const constant = new Constant(
+            std::make_shared<PType>(
+				PType::PrimitiveTypeEnum::kIntegerType),
+            value);
+        // no need to release constant object since it'll be assigned to the unique_ptr
+        $$ = new ConstantValueNode(@1.first_line, @1.first_column, constant);
+    }
     |
-    REAL_LITERAL
+    REAL_LITERAL {
+        Constant::ConstantValue value;
+        value.real = static_cast<double>($1);
+        auto * const constant = new Constant(
+            std::make_shared<PType>(
+                PType::PrimitiveTypeEnum::kRealType),
+            value);
+        // no need to release constant object since it'll be assigned to the unique_ptr
+        $$ = new ConstantValueNode(@1.first_line, @1.first_column, constant);
+    }
 ;
 
     /*
@@ -445,7 +469,9 @@ CompoundStatement:
 Simple:
     VariableReference ASSIGN Expression SEMICOLON
     |
-    PRINT Expression SEMICOLON
+    PRINT Expression SEMICOLON {
+        $$ = new PrintNode(@1.first_line, @1.first_column, $2);
+    }
     |
     READ VariableReference SEMICOLON
 ;
@@ -501,19 +527,31 @@ FunctionCall:
 ;
 
 FunctionInvocation:
-    ID L_PARENTHESIS ExpressionList R_PARENTHESIS
+    ID L_PARENTHESIS ExpressionList R_PARENTHESIS {
+        $$ = new FunctionInvocationNode(@1.first_line, @1.first_column, $1, *$3);
+        free($1);
+        delete $3;
+    }
 ;
 
 ExpressionList:
-    Epsilon
+    Epsilon {
+        $$ = new std::vector<std::unique_ptr<ExpressionNode>>();
+    }
     |
     Expressions
 ;
 
 Expressions:
-    Expression
+    Expression {
+        $$ = new std::vector<std::unique_ptr<ExpressionNode>>();
+        $$->emplace_back($1);
+    }
     |
-    Expressions COMMA Expression
+    Expressions COMMA Expression {
+        $1->emplace_back($3);
+        $$ = $1;
+    }
 ;
 
 StatementList:
@@ -537,37 +575,84 @@ Statements:
 ;
 
 Expression:
-    L_PARENTHESIS Expression R_PARENTHESIS
+    L_PARENTHESIS Expression R_PARENTHESIS {
+        $$ = $2;
+    }
     |
-    MINUS Expression %prec UNARY_MINUS
+    MINUS Expression %prec UNARY_MINUS {
+        $$ = new UnaryOperatorNode(@1.first_line, @1.first_column,
+                                   Operator::kNegOp, $2);
+    }
     |
-    Expression MULTIPLY Expression
+    Expression MULTIPLY Expression {
+        $$ = new BinaryOperatorNode(@2.first_line, @2.first_column,
+                                    Operator::kMultiplyOp, $1, $3);
+    }
     |
-    Expression DIVIDE Expression
+    Expression DIVIDE Expression {
+        $$ = new BinaryOperatorNode(@2.first_line, @2.first_column,
+                                    Operator::kDivideOp, $1, $3);
+    }
     |
-    Expression MOD Expression
+    Expression MOD Expression {
+        $$ = new BinaryOperatorNode(@2.first_line, @2.first_column,
+                                    Operator::kModOp, $1, $3);
+    }
     |
-    Expression PLUS Expression
+    Expression PLUS Expression {
+        $$ = new BinaryOperatorNode(@2.first_line, @2.first_column,
+                                    Operator::kPlusOp, $1, $3);
+    }
     |
-    Expression MINUS Expression
+    Expression MINUS Expression {
+        $$ = new BinaryOperatorNode(@2.first_line, @2.first_column,
+                                    Operator::kMinusOp, $1, $3);
+    }
     |
-    Expression LESS Expression
+    Expression LESS Expression {
+        $$ = new BinaryOperatorNode(@2.first_line, @2.first_column,
+                                    Operator::kLessOp, $1, $3);
+    }
     |
-    Expression LESS_OR_EQUAL Expression
+    Expression LESS_OR_EQUAL Expression {
+        $$ = new BinaryOperatorNode(@2.first_line, @2.first_column,
+                                    Operator::kLessOrEqualOp, $1, $3);
+    }
     |
-    Expression GREATER Expression
+    Expression GREATER Expression {
+        $$ = new BinaryOperatorNode(@2.first_line, @2.first_column,
+                                    Operator::kGreaterOp, $1, $3);
+    }
     |
-    Expression GREATER_OR_EQUAL Expression
+    Expression GREATER_OR_EQUAL Expression {
+        $$ = new BinaryOperatorNode(@2.first_line, @2.first_column,
+                                    Operator::kGreaterOrEqualOp, $1, $3);
+    }
     |
-    Expression EQUAL Expression
+    Expression EQUAL Expression {
+        $$ = new BinaryOperatorNode(@2.first_line, @2.first_column,
+                                    Operator::kEqualOp, $1, $3);
+    }
     |
-    Expression NOT_EQUAL Expression
+    Expression NOT_EQUAL Expression {
+        $$ = new BinaryOperatorNode(@2.first_line, @2.first_column,
+                                    Operator::kNotEqualOp, $1, $3);
+    }
     |
-    NOT Expression
+    NOT Expression {
+        $$ = new UnaryOperatorNode(@1.first_line, @1.first_column,
+                                   Operator::kNotOp, $2);
+    }
     |
-    Expression AND Expression
+    Expression AND Expression {
+        $$ = new BinaryOperatorNode(@2.first_line, @2.first_column,
+                                    Operator::kAndOp, $1, $3);
+    }
     |
-    Expression OR Expression
+    Expression OR Expression {
+        $$ = new BinaryOperatorNode(@2.first_line, @2.first_column,
+                                    Operator::kOrOp, $1, $3);
+    }
     |
     IntegerAndReal
     |

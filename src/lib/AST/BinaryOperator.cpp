@@ -1,12 +1,8 @@
 #include "AST/BinaryOperator.hpp"
 
-// TODO
-BinaryOperatorNode::BinaryOperatorNode(const uint32_t line, const uint32_t col)
-    : ExpressionNode{line, col} {}
+void BinaryOperatorNode::visitChildNodes(AstNodeVisitor &p_visitor) {
+    auto visit_ast_node = [&](auto &ast_node) { ast_node->accept(p_visitor); };
 
-// TODO: You may use code snippets in AstDumper.cpp
-void BinaryOperatorNode::print() {}
-
-// void BinaryOperatorNode::visitChildNodes(AstNodeVisitor &p_visitor) {
-//     // TODO
-// }
+    visit_ast_node(m_left_operand);
+    visit_ast_node(m_right_operand);
+}

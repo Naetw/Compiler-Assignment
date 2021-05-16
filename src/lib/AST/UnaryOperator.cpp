@@ -1,12 +1,7 @@
 #include "AST/UnaryOperator.hpp"
 
-// TODO
-UnaryOperatorNode::UnaryOperatorNode(const uint32_t line, const uint32_t col)
-    : ExpressionNode{line, col} {}
+void UnaryOperatorNode::visitChildNodes(AstNodeVisitor &p_visitor) {
+    auto visit_ast_node = [&](auto &ast_node) { ast_node->accept(p_visitor); };
 
-// TODO: You may use code snippets in AstDumper.cpp
-void UnaryOperatorNode::print() {}
-
-// void UnaryOperatorNode::visitChildNodes(AstNodeVisitor &p_visitor) {
-//     // TODO
-// }
+    visit_ast_node(m_operand);
+}

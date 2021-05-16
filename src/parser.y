@@ -101,10 +101,10 @@ extern int yylex_destroy(void);
 %type <boolean> TRUE FALSE
 %type <sign> NegOrNot
 
-%type <node> Statement Simple
+%type <node> Statement Simple Condition While
 %type <type_ptr> Type ScalarType ArrType ReturnType
 %type <decl_ptr> Declaration FormalArg
-%type <compound_stmt_ptr> CompoundStatement
+%type <compound_stmt_ptr> CompoundStatement ElseOrNot
 %type <constant_value_node_ptr> LiteralConstant StringAndBoolean
 %type <func_ptr> Function FunctionDeclaration FunctionDefinition
 %type <expr_ptr> Expression IntegerAndReal FunctionInvocation VariableReference
@@ -514,20 +514,28 @@ Condition:
     IF Expression THEN
     CompoundStatement
     ElseOrNot
-    END IF
+    END IF {
+        $$ = new IfNode(@1.first_line, @1.first_column, $2, $4, $5);
+    }
 ;
 
 ElseOrNot:
     ELSE
-    CompoundStatement
+    CompoundStatement {
+        $$ = $2;
+    }
     |
-    Epsilon
+    Epsilon {
+        $$ = nullptr;
+    }
 ;
 
 While:
     WHILE Expression DO
     CompoundStatement
-    END DO
+    END DO {
+        $$ = new WhileNode(@1.first_line, @1.first_column, $2, $4);
+    }
 ;
 
 For:

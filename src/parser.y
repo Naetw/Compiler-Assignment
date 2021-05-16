@@ -62,6 +62,7 @@ extern int yylex_destroy(void);
     class DeclNode;
     class ConstantValueNode;
     class CompoundStatementNode;
+    class FunctionNode;
 }
 
     /* For yylval */
@@ -80,27 +81,31 @@ extern int yylex_destroy(void);
     DeclNode *decl_ptr;
     CompoundStatementNode *compound_stmt_ptr;
     ConstantValueNode *constant_value_node_ptr;
+    FunctionNode *func_ptr;
 
     std::vector<std::unique_ptr<DeclNode>> *decls_ptr;
     std::vector<IdInfo> *ids_ptr;
     std::vector<uint64_t> *dimensions_ptr;
+    std::vector<std::unique_ptr<FunctionNode>> *funcs_ptr;
 };
 
-%type <identifier> ProgramName ID
+%type <identifier> ProgramName ID FunctionName
 %type <integer> INT_LITERAL
 %type <real> REAL_LITERAL
 %type <string> STRING_LITERAL
 %type <boolean> TRUE FALSE
 %type <sign> NegOrNot
 
-%type <type_ptr> Type ScalarType ArrType
-%type <decl_ptr> Declaration
+%type <type_ptr> Type ScalarType ArrType ReturnType
+%type <decl_ptr> Declaration FormalArg
 %type <compound_stmt_ptr> CompoundStatement
 %type <constant_value_node_ptr> LiteralConstant StringAndBoolean
+%type <func_ptr> Function FunctionDeclaration FunctionDefinition
 
-%type <decls_ptr> DeclarationList Declarations
+%type <decls_ptr> DeclarationList Declarations FormalArgList FormalArgs
 %type <ids_ptr> IdList
 %type <dimensions_ptr> ArrDecl
+%type <funcs_ptr> FunctionList Functions
 
     /* Follow the order in scanner.l */
 
@@ -145,7 +150,7 @@ Program:
     END {
         root = new ProgramNode(@1.first_line, @1.first_column,
                                $1, new PType(PType::PrimitiveTypeEnum::kVoidType),
-                               *$3, $5);
+                               *$3, *$4, $5);
 
         free($1);
     }
@@ -176,15 +181,23 @@ Declarations:
 ;
 
 FunctionList:
-    Epsilon
+    Epsilon {
+        $$ = new std::vector<std::unique_ptr<FunctionNode>>();
+    }
     |
     Functions
 ;
 
 Functions:
-    Function
+    Function {
+        $$ = new std::vector<std::unique_ptr<FunctionNode>>();
+        $$->emplace_back($1);
+    }
     |
-    Functions Function
+    Functions Function {
+        $1->emplace_back($2);
+        $$ = $1;
+    }
 ;
 
 Function:
@@ -194,13 +207,21 @@ Function:
 ;
 
 FunctionDeclaration:
-    FunctionName L_PARENTHESIS FormalArgList R_PARENTHESIS ReturnType SEMICOLON
+    FunctionName L_PARENTHESIS FormalArgList R_PARENTHESIS ReturnType SEMICOLON {
+        $$ = new FunctionNode(@1.first_line, @1.first_column, $1, *$3, $5, nullptr);
+        free($1);
+        delete $3;
+    }
 ;
 
 FunctionDefinition:
     FunctionName L_PARENTHESIS FormalArgList R_PARENTHESIS ReturnType
     CompoundStatement
-    END
+    END {
+        $$ = new FunctionNode(@1.first_line, @1.first_column, $1, *$3, $5, $6);
+        free($1);
+        delete $3;
+    }
 ;
 
 FunctionName:
@@ -208,19 +229,30 @@ FunctionName:
 ;
 
 FormalArgList:
-    Epsilon
+    Epsilon {
+        $$ = new std::vector<std::unique_ptr<DeclNode>>();
+    }
     |
     FormalArgs
 ;
 
 FormalArgs:
-    FormalArg
+    FormalArg {
+        $$ = new std::vector<std::unique_ptr<DeclNode>>();
+        $$->emplace_back($1);
+    }
     |
-    FormalArgs SEMICOLON FormalArg
+    FormalArgs SEMICOLON FormalArg {
+        $1->emplace_back($3);
+        $$ = $1;
+    }
 ;
 
 FormalArg:
-    IdList COLON Type
+    IdList COLON Type {
+        $$ = new DeclNode(@1.first_line, @1.first_column, $1, $3);
+        delete $1;
+    }
 ;
 
 IdList:
@@ -238,9 +270,13 @@ IdList:
 ;
 
 ReturnType:
-    COLON ScalarType
+    COLON ScalarType {
+        $$ = $2;
+    }
     |
-    Epsilon
+    Epsilon {
+        $$ = new PType(PType::PrimitiveTypeEnum::kVoidType);
+    }
 ;
 
     /*

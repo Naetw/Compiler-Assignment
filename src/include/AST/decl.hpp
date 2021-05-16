@@ -39,6 +39,8 @@ class DeclNode final : public AstNode {
         init(p_ids, p_constant->getTypeSharedPtr(), p_constant);
     }
 
+    const VarNodes &getVariables() { return m_var_nodes; }
+
     void accept(AstNodeVisitor &p_visitor) override { p_visitor.visit(*this); }
     void visitChildNodes(AstNodeVisitor &p_visitor) override;
 };

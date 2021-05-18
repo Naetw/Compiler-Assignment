@@ -21,6 +21,11 @@ class AstNode {
     virtual ~AstNode() = 0;
     AstNode(const uint32_t line, const uint32_t col);
 
+    AstNode(const AstNode &) = delete;
+    AstNode(AstNode &&) = delete;
+    AstNode &operator=(const AstNode &) = delete;
+    AstNode &operator=(AstNode &&) = delete;
+
     const Location &getLocation() const;
 
     virtual void accept(AstNodeVisitor &p_visitor) = 0;

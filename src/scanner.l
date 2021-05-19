@@ -15,12 +15,14 @@
 #define TOKEN_STRING(t, s)  { LIST; if (opt_tok) printf("<%s: %s>\n", #t, (s)); }
 #define MAX_LINE_LENG       512
 #define MAX_ID_LENG         32
+#define MAX_LINE_NUM        200
 
 // prevent undefined reference error in newer version of flex
 extern "C" int yylex(void);
 
 uint32_t line_num = 1;
 uint32_t col_num = 1;
+long line_positions[MAX_LINE_NUM + 1] = {0}; // +1 since we use 1-based
 char buffer[MAX_LINE_LENG];
 
 static uint32_t opt_src = 1;
@@ -197,6 +199,8 @@ float {integer}\.(0|[0-9]*[1-9])
     if (opt_src) {
         printf("%d: %s\n", line_num, buffer);
     }
+    line_positions[line_num + 1] = line_positions[line_num] +
+                                   (buffer_ptr - buffer + 1);
     ++line_num;
     col_num = 1;
     buffer[0] = '\0';

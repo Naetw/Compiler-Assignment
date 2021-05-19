@@ -1,7 +1,11 @@
 #include "sema/SemanticAnalyzer.hpp"
+#include "sema/error.hpp"
 #include "visitor/AstNodeInclude.hpp"
 
 #include <algorithm>
+
+static constexpr char *kRedeclaredSymbolErrorMessage =
+    "symbol '%s' is redeclared";
 
 void SemanticAnalyzer::visit(ProgramNode &p_program) {
     m_symbol_manager.pushGlobalScope();
@@ -11,7 +15,9 @@ void SemanticAnalyzer::visit(ProgramNode &p_program) {
         p_program.getName(), SymbolEntry::KindEnum::kProgramKind,
         p_program.getTypePtr(), static_cast<Constant *>(nullptr));
     if (!success) {
-        // logSemanticError();
+        logSemanticError(p_program.getLocation(), kRedeclaredSymbolErrorMessage,
+                         p_program.getNameCString());
+        m_has_error = true;
     }
 
     p_program.visitChildNodes(*this);
@@ -52,7 +58,10 @@ SymbolEntry *SemanticAnalyzer::addSymbol(const VariableNode &p_variable) {
                                              p_variable.getTypePtr(),
                                              p_variable.getConstantPtr());
     if (!entry) {
-        // logSemanticError();
+        logSemanticError(p_variable.getLocation(),
+                         kRedeclaredSymbolErrorMessage,
+                         p_variable.getNameCString());
+        m_has_error = true;
     }
 
     return entry;
@@ -88,7 +97,10 @@ void SemanticAnalyzer::visit(FunctionNode &p_function) {
         p_function.getName(), SymbolEntry::KindEnum::kFunctionKind,
         p_function.getTypePtr(), &p_function.getParameters());
     if (!success) {
-        // logSemanticError();
+        logSemanticError(p_function.getLocation(),
+                         kRedeclaredSymbolErrorMessage,
+                         p_function.getNameCString());
+        m_has_error = true;
     }
 
     m_symbol_manager.pushScope();

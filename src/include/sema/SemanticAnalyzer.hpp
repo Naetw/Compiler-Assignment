@@ -19,6 +19,8 @@ class SemanticAnalyzer final : public AstNodeVisitor {
     SymbolManager m_symbol_manager;
     std::stack<SemanticContext> m_context_stack;
 
+    bool m_has_error = false;
+
   public:
     ~SemanticAnalyzer() = default;
     SemanticAnalyzer(const bool opt_dmp) : m_symbol_manager(opt_dmp) {}
@@ -40,6 +42,8 @@ class SemanticAnalyzer final : public AstNodeVisitor {
     void visit(WhileNode &p_while) override;
     void visit(ForNode &p_for) override;
     void visit(ReturnNode &p_return) override;
+
+    bool hasError() const { return m_has_error; }
 
   private:
     bool isInForLoop() const {

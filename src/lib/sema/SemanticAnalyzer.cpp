@@ -99,16 +99,8 @@ void SemanticAnalyzer::visit(VariableNode &p_variable) {
 }
 
 void SemanticAnalyzer::visit(ConstantValueNode &p_constant_value) {
-    /*
-     * TODO:
-     *
-     * 1. Push a new symbol table if this node forms a scope.
-     * 2. Insert the symbol into current symbol table if this node is related to
-     *    declaration (ProgramNode, VariableNode, FunctionNode).
-     * 3. Travere child nodes of this node.
-     * 4. Perform semantic analyses of this node.
-     * 5. Pop the symbol table pushed at the 1st step.
-     */
+    p_constant_value.setInferredType(
+        p_constant_value.getTypePtr()->getStructElementType(0));
 }
 
 void SemanticAnalyzer::visit(FunctionNode &p_function) {
@@ -206,17 +198,92 @@ void SemanticAnalyzer::visit(FunctionInvocationNode &p_func_invocation) {
      */
 }
 
+static const SymbolEntry *
+checkVariableExistence(const SymbolManager &p_symbol_manager,
+                       const VariableReferenceNode &p_variable_ref) {
+    const auto *entry = p_symbol_manager.lookup(p_variable_ref.getName());
+
+    if (entry == nullptr) {
+        logSemanticError(p_variable_ref.getLocation(),
+                         "use of undeclared symbol '%s'",
+                         p_variable_ref.getNameCString());
+    }
+
+    return entry;
+}
+
+static bool validateVariableKind(const SymbolEntry::KindEnum kind,
+                                 const VariableReferenceNode &p_variable_ref) {
+    if (kind != SymbolEntry::KindEnum::kParameterKind &&
+        kind != SymbolEntry::KindEnum::kVariableKind &&
+        kind != SymbolEntry::KindEnum::kLoopVarKind &&
+        kind != SymbolEntry::KindEnum::kConstantKind) {
+        logSemanticError(p_variable_ref.getLocation(),
+                         "use of non-variable symbol '%s'",
+                         p_variable_ref.getNameCString());
+        return false;
+    }
+    return true;
+}
+
+static bool
+validateArrayReference(const VariableReferenceNode &p_variable_ref) {
+    for (const auto &index : p_variable_ref.getIndices()) {
+        if (index->getInferredType() == nullptr) {
+            return false;
+        }
+
+        if (!index->getInferredType()->isInteger()) {
+            logSemanticError(index->getLocation(),
+                             "index of array reference must be an integer");
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static bool
+validateArraySubscriptNum(const PType *p_var_type,
+                          const VariableReferenceNode &p_variable_ref) {
+    if (p_variable_ref.getIndices().size() >
+        p_var_type->getDimensions().size()) {
+        logSemanticError(p_variable_ref.getLocation(),
+                         "there is an over array subscript on '%s'",
+                         p_variable_ref.getNameCString());
+        return false;
+    }
+    return true;
+}
+
 void SemanticAnalyzer::visit(VariableReferenceNode &p_variable_ref) {
-    /*
-     * TODO:
-     *
-     * 1. Push a new symbol table if this node forms a scope.
-     * 2. Insert the symbol into current symbol table if this node is related to
-     *    declaration (ProgramNode, VariableNode, FunctionNode).
-     * 3. Travere child nodes of this node.
-     * 4. Perform semantic analyses of this node.
-     * 5. Pop the symbol table pushed at the 1st step.
-     */
+    p_variable_ref.visitChildNodes(*this);
+
+    const SymbolEntry *entry = nullptr;
+    if ((entry = checkVariableExistence(m_symbol_manager, p_variable_ref)) ==
+        nullptr) {
+        return;
+    }
+
+    if (!validateVariableKind(entry->getKind(), p_variable_ref)) {
+        return;
+    }
+
+    if (m_error_entry_set.find(const_cast<SymbolEntry *>(entry)) !=
+        m_error_entry_set.end()) {
+        return;
+    }
+
+    if (!validateArrayReference(p_variable_ref)) {
+        return;
+    }
+
+    if (!validateArraySubscriptNum(entry->getTypePtr(), p_variable_ref)) {
+        return;
+    }
+
+    p_variable_ref.setInferredType(entry->getTypePtr()->getStructElementType(
+        p_variable_ref.getIndices().size()));
 }
 
 void SemanticAnalyzer::visit(AssignmentNode &p_assignment) {

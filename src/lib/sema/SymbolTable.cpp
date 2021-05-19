@@ -235,3 +235,12 @@ SymbolManager::addSymbol(const std::string &p_name,
     return genericAddSymbol<FunctionNode::DeclNodes>(*this, p_name, kind,
                                                      p_type, p_parameters);
 }
+
+const SymbolEntry *SymbolManager::lookup(const std::string &p_name) const {
+    auto search_result = m_hash_entries.find(p_name);
+
+    if (search_result != m_hash_entries.end()) {
+        return search_result->second;
+    }
+    return nullptr;
+}

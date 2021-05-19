@@ -19,3 +19,19 @@ const char *PType::getPTypeCString() const {
 
     return m_type_string.c_str();
 }
+
+PType *PType::getStructElementType(const std::size_t nth) const {
+    if (nth > m_dimensions.size()) {
+        return nullptr;
+    }
+
+    auto *type_ptr = new PType(m_type);
+
+    std::vector<uint64_t> dims;
+    for (std::size_t i = nth; i < m_dimensions.size(); ++i) {
+        dims.emplace_back(m_dimensions[i]);
+    }
+    type_ptr->setDimensions(dims);
+
+    return type_ptr;
+}

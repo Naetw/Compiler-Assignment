@@ -31,6 +31,7 @@ class Constant {
     Constant(const PTypeSharedPtr &p_type, const ConstantValue value)
         : m_type(p_type), m_value(value) {}
 
+    const PType *getTypePtr() const { return m_type.get(); }
     const PTypeSharedPtr &getTypeSharedPtr() const { return m_type; }
     const char *getConstantValueCString() const;
 };

@@ -164,6 +164,8 @@ class SymbolManager {
                            const PType *const p_type,
                            const FunctionNode::DeclNodes *const p_parameters);
 
+    const SymbolEntry *lookup(const std::string &p_name) const;
+
   private:
     std::pair<bool, SymbolEntry *>
     checkExistence(const std::string &p_name) const;

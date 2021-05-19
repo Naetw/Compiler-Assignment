@@ -37,6 +37,30 @@ class PType {
     const char *getPTypeCString() const;
 
     const std::vector<uint64_t> &getDimensions() const { return m_dimensions; }
+
+    PType *getStructElementType(const std::size_t nth) const;
+
+    bool isPrimitiveInteger() const {
+        return m_type == PrimitiveTypeEnum::kIntegerType;
+    }
+    bool isPrimitiveReal() const {
+        return m_type == PrimitiveTypeEnum::kRealType;
+    }
+    bool isPrimitiveBool() const {
+        return m_type == PrimitiveTypeEnum::kBoolType;
+    }
+    bool isPrimitiveString() const {
+        return m_type == PrimitiveTypeEnum::kStringType;
+    }
+
+    bool isInteger() const {
+        return isPrimitiveInteger() && m_dimensions.empty();
+    }
+    bool isReal() const { return isPrimitiveReal() && m_dimensions.empty(); }
+    bool isBool() const { return isPrimitiveBool() && m_dimensions.empty(); }
+    bool isString() const {
+        return isPrimitiveString() && m_dimensions.empty();
+    }
 };
 
 #endif

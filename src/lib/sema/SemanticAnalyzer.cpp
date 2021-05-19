@@ -67,16 +67,35 @@ SymbolEntry *SemanticAnalyzer::addSymbol(const VariableNode &p_variable) {
     return entry;
 }
 
+static bool validateDimensions(const VariableNode &p_variable) {
+    bool has_error = false;
+
+    auto validate_dimension = [&](const auto dimension) {
+        if (dimension == 0) {
+            logSemanticError(p_variable.getLocation(),
+                             "'%s' declared as an array with an index that is "
+                             "not greater than 0",
+                             p_variable.getNameCString());
+            has_error = true;
+        }
+    };
+
+    for_each(p_variable.getTypePtr()->getDimensions().begin(),
+             p_variable.getTypePtr()->getDimensions().end(),
+             validate_dimension);
+
+    return !has_error;
+}
+
 void SemanticAnalyzer::visit(VariableNode &p_variable) {
     auto *entry = addSymbol(p_variable);
 
     p_variable.visitChildNodes(*this);
 
-    /*
-     * TODO:
-     *
-     * 4. Perform semantic analyses of this node.
-     */
+    if (entry && !validateDimensions(p_variable)) {
+        m_error_entry_set.insert(entry);
+        m_has_error = true;
+    }
 }
 
 void SemanticAnalyzer::visit(ConstantValueNode &p_constant_value) {

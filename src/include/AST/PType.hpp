@@ -35,6 +35,8 @@ class PType {
 
     PrimitiveTypeEnum getPrimitiveType() const { return m_type; }
     const char *getPTypeCString() const;
+
+    const std::vector<uint64_t> &getDimensions() const { return m_dimensions; }
 };
 
 #endif

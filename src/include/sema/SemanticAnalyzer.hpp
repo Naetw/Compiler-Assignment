@@ -4,6 +4,7 @@
 #include "sema/SymbolTable.hpp"
 #include "visitor/AstNodeVisitor.hpp"
 
+#include <set>
 #include <stack>
 
 class SemanticAnalyzer final : public AstNodeVisitor {
@@ -18,6 +19,8 @@ class SemanticAnalyzer final : public AstNodeVisitor {
   private:
     SymbolManager m_symbol_manager;
     std::stack<SemanticContext> m_context_stack;
+
+    std::set<SymbolEntry *> m_error_entry_set;
 
     bool m_has_error = false;
 

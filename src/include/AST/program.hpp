@@ -32,6 +32,9 @@ class ProgramNode final : public AstNode {
           m_func_nodes(std::move(p_func_nodes)), m_body(p_body) {}
 
     const char *getNameCString() const { return m_name.c_str(); }
+    const std::string &getName() const { return m_name; }
+
+    const PType *getTypePtr() const { return m_ret_type.get(); }
 
     void accept(AstNodeVisitor &p_visitor) override { p_visitor.visit(*this); }
 

@@ -31,11 +31,20 @@ class FunctionNode final : public AstNode {
           m_parameters(std::move(p_decl_nodes)), m_ret_type(p_ret_type),
           m_body(p_body) {}
 
+    static std::string getParametersTypeString(const DeclNodes &p_parameters);
+
+    const std::string &getName() const { return m_name; }
     const char *getNameCString() const { return m_name.c_str(); }
     const char *getPrototypeCString() const;
 
+    const DeclNodes &getParameters() const { return m_parameters; }
+
+    const PType *getTypePtr() const { return m_ret_type.get(); }
+
     void accept(AstNodeVisitor &p_visitor) override { p_visitor.visit(*this); }
     void visitChildNodes(AstNodeVisitor &p_visitor) override;
+
+    void visitBodyChildNodes(AstNodeVisitor &p_visitor);
 };
 
 #endif

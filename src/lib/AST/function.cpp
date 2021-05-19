@@ -3,8 +3,8 @@
 
 #include <algorithm>
 
-static std::string
-getParametersTypeString(const FunctionNode::DeclNodes &p_parameters) {
+std::string
+FunctionNode::getParametersTypeString(const DeclNodes &p_parameters) {
     std::string type_string;
 
     for (const auto &parameter : p_parameters) {
@@ -42,5 +42,11 @@ void FunctionNode::visitChildNodes(AstNodeVisitor &p_visitor) {
 
     if (m_body) {
         visit_ast_node(m_body);
+    }
+}
+
+void FunctionNode::visitBodyChildNodes(AstNodeVisitor &p_visitor) {
+    if (m_body) {
+        m_body->visitChildNodes(p_visitor);
     }
 }

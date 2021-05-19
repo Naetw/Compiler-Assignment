@@ -19,6 +19,8 @@
 #include "AST/for.hpp"
 #include "AST/return.hpp"
 
+#include "sema/SemanticAnalyzer.hpp"
+
 #include "AST/constant.hpp"
 #include "AST/operator.hpp"
 
@@ -42,6 +44,7 @@ typedef struct YYLTYPE {
 
 extern int32_t line_num;  /* declared in scanner.l */
 extern char buffer[];     /* declared in scanner.l */
+extern uint32_t opt_dmp;  /* declared in scanner.l */
 extern FILE *yyin;        /* declared by lex */
 extern char *yytext;      /* declared by lex */
 
@@ -766,10 +769,13 @@ int main(int argc, const char *argv[]) {
         root->accept(ast_dumper);
     }
 
+    SemanticAnalyzer sema_analyzer(opt_dmp);
+    root->accept(sema_analyzer);
+
     printf("\n"
-           "|--------------------------------|\n"
-           "|  There is no syntactic error!  |\n"
-           "|--------------------------------|\n");
+           "|---------------------------------------------------|\n"
+           "|  There is no syntactic error and semantic error!  |\n"
+           "|---------------------------------------------------|\n");
 
     delete root;
     fclose(yyin);

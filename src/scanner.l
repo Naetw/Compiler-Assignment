@@ -25,6 +25,7 @@ char buffer[MAX_LINE_LENG];
 
 static uint32_t opt_src = 1;
 static uint32_t opt_tok = 1;
+uint32_t opt_dmp = 1;
 static char string_literal[MAX_LINE_LENG];
 static char *buffer_ptr = buffer;
 
@@ -178,6 +179,8 @@ float {integer}\.(0|[0-9]*[1-9])
     case 'T':
         opt_tok = (yytext[4] == '+') ? 1 : 0;
         break;
+    case 'D':
+        opt_dmp = (yytext[4] == '+') ? 1 : 0;
     }
 }
 

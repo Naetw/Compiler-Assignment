@@ -1,12 +1,27 @@
-#ifndef __SEMA_SEMANTIC_ANALYZER_H
-#define __SEMA_SEMANTIC_ANALYZER_H
+#ifndef SEMA_SEMANTIC_ANALYZER_H
+#define SEMA_SEMANTIC_ANALYZER_H
 
+#include "sema/SymbolTable.hpp"
 #include "visitor/AstNodeVisitor.hpp"
 
-class SemanticAnalyzer : public AstNodeVisitor {
+#include <stack>
+
+class SemanticAnalyzer final : public AstNodeVisitor {
+  private:
+    enum class SemanticContext : uint8_t {
+        kGlobal,
+        kFunction,
+        kForLoop,
+        kLocal
+    };
+
+  private:
+    SymbolManager m_symbol_manager;
+    std::stack<SemanticContext> m_context_stack;
+
   public:
-    SemanticAnalyzer() = default;
     ~SemanticAnalyzer() = default;
+    SemanticAnalyzer(const bool opt_dmp) : m_symbol_manager(opt_dmp) {}
 
     void visit(ProgramNode &p_program) override;
     void visit(DeclNode &p_decl) override;
@@ -27,8 +42,14 @@ class SemanticAnalyzer : public AstNodeVisitor {
     void visit(ReturnNode &p_return) override;
 
   private:
-    // TODO: something like symbol manager (manage symbol tables)
-    //       context manager, return type manager
+    bool isInForLoop() const {
+        return m_context_stack.top() == SemanticContext::kForLoop;
+    }
+    bool isInFunction() const {
+        return m_context_stack.top() == SemanticContext::kFunction;
+    }
+    SymbolEntry::KindEnum determineVarKind(const VariableNode &p_var_node);
+    SymbolEntry *addSymbol(const VariableNode &p_var_node);
 };
 
 #endif

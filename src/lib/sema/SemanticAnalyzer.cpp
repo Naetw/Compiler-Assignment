@@ -4,7 +4,7 @@
 
 #include <algorithm>
 
-static constexpr char *kRedeclaredSymbolErrorMessage =
+static constexpr const char *kRedeclaredSymbolErrorMessage =
     "symbol '%s' is redeclared";
 
 void SemanticAnalyzer::visit(ProgramNode &p_program) {

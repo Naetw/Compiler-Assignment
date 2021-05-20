@@ -3,6 +3,7 @@
 #include "visitor/AstNodeInclude.hpp"
 
 #include <algorithm>
+#include <cassert>
 
 static constexpr const char *kRedeclaredSymbolErrorMessage =
     "symbol '%s' is redeclared";
@@ -159,17 +160,140 @@ void SemanticAnalyzer::visit(PrintNode &p_print) {
      */
 }
 
+static bool validateOperandsInArithmeticOp(const Operator op,
+                                           const PType *const p_left_type,
+                                           const PType *const p_right_type) {
+    if (op == Operator::kPlusOp && p_left_type->isString() &&
+        p_right_type->isString()) {
+        return true;
+    }
+
+    if ((p_left_type->isInteger() || p_left_type->isReal()) &&
+        (p_right_type->isInteger() || p_right_type->isReal())) {
+        return true;
+    }
+
+    return false;
+}
+
+static bool validateOperandsInModOp(const PType *const p_left_type,
+                                    const PType *const p_right_type) {
+    return p_left_type->isInteger() && p_right_type->isInteger();
+}
+
+static bool validateOperandsInBooleanOp(const PType *const p_left_type,
+                                        const PType *const p_right_type) {
+    return p_left_type->isBool() && p_right_type->isBool();
+}
+
+static bool validateOperandsInRelationalOp(const PType *const p_left_type,
+                                           const PType *const p_right_type) {
+    return (p_left_type->isInteger() || p_left_type->isReal()) &&
+           (p_right_type->isInteger() || p_right_type->isReal());
+}
+
+static bool validateBinaryOperands(BinaryOperatorNode &p_bin_op) {
+    const auto *left_type_ptr = p_bin_op.getLeftOperand().getInferredType();
+    const auto *right_type_ptr = p_bin_op.getRightOperand().getInferredType();
+
+    if (left_type_ptr == nullptr || right_type_ptr == nullptr) {
+        return false;
+    }
+
+    switch (p_bin_op.getOp()) {
+    case Operator::kPlusOp:
+    case Operator::kMinusOp:
+    case Operator::kMultiplyOp:
+    case Operator::kDivideOp:
+        if (validateOperandsInArithmeticOp(p_bin_op.getOp(),
+                                           left_type_ptr, right_type_ptr)) {
+            return true;
+        }
+        break;
+    case Operator::kModOp:
+        if (validateOperandsInModOp(left_type_ptr, right_type_ptr)) {
+            return true;
+        }
+        break;
+    case Operator::kAndOp:
+    case Operator::kOrOp:
+        if (validateOperandsInBooleanOp(left_type_ptr, right_type_ptr)) {
+            return true;
+        }
+        break;
+    case Operator::kLessOp:
+    case Operator::kLessOrEqualOp:
+    case Operator::kEqualOp:
+    case Operator::kGreaterOp:
+    case Operator::kGreaterOrEqualOp:
+    case Operator::kNotEqualOp:
+        if (validateOperandsInRelationalOp(left_type_ptr, right_type_ptr)) {
+            return true;
+        }
+        break;
+    default:
+        assert(false &&
+               "unknown binary op or unary op");
+    }
+
+    logSemanticError(p_bin_op.getLocation(),
+                     "invalid operands to binary operator '%s' ('%s' and '%s')",
+                     p_bin_op.getOpCString(), left_type_ptr->getPTypeCString(),
+                     right_type_ptr->getPTypeCString());
+    return false;
+}
+
+static void setBinaryOpInferredType(BinaryOperatorNode &p_bin_op) {
+    switch (p_bin_op.getOp()) {
+    case Operator::kPlusOp:
+    case Operator::kMinusOp:
+    case Operator::kMultiplyOp:
+    case Operator::kDivideOp:
+        if (p_bin_op.getLeftOperand().getInferredType()->isString()) {
+            p_bin_op.setInferredType(
+                new PType(PType::PrimitiveTypeEnum::kStringType));
+            return;
+        }
+
+        if (p_bin_op.getLeftOperand().getInferredType()->isReal() ||
+            p_bin_op.getRightOperand().getInferredType()->isReal()) {
+            p_bin_op.setInferredType(
+                new PType(PType::PrimitiveTypeEnum::kRealType));
+            return;
+        }
+    case Operator::kModOp:
+        p_bin_op.setInferredType(
+            new PType(PType::PrimitiveTypeEnum::kIntegerType));
+        return;
+    case Operator::kAndOp:
+    case Operator::kOrOp:
+        p_bin_op.setInferredType(
+            new PType(PType::PrimitiveTypeEnum::kBoolType));
+        return;
+    case Operator::kLessOp:
+    case Operator::kLessOrEqualOp:
+    case Operator::kEqualOp:
+    case Operator::kGreaterOp:
+    case Operator::kGreaterOrEqualOp:
+    case Operator::kNotEqualOp:
+        p_bin_op.setInferredType(
+            new PType(PType::PrimitiveTypeEnum::kBoolType));
+        return;
+    default:
+        assert(false &&
+               "unknown binary op or unary op");
+    }
+}
+
 void SemanticAnalyzer::visit(BinaryOperatorNode &p_bin_op) {
-    /*
-     * TODO:
-     *
-     * 1. Push a new symbol table if this node forms a scope.
-     * 2. Insert the symbol into current symbol table if this node is related to
-     *    declaration (ProgramNode, VariableNode, FunctionNode).
-     * 3. Travere child nodes of this node.
-     * 4. Perform semantic analyses of this node.
-     * 5. Pop the symbol table pushed at the 1st step.
-     */
+    p_bin_op.visitChildNodes(*this);
+
+    if (!validateBinaryOperands(p_bin_op)) {
+        m_has_error = true;
+        return;
+    }
+
+    setBinaryOpInferredType(p_bin_op);
 }
 
 void SemanticAnalyzer::visit(UnaryOperatorNode &p_un_op) {

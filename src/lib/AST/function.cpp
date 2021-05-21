@@ -3,6 +3,17 @@
 
 #include <algorithm>
 
+FunctionNode::DeclNodes::size_type
+FunctionNode::getParametersNum(const DeclNodes &p_parameters) {
+    FunctionNode::DeclNodes::size_type num = 0;
+
+    for (const auto &decl_node : p_parameters) {
+        num += decl_node->getVariables().size();
+    }
+
+    return num;
+}
+
 std::string
 FunctionNode::getParametersTypeString(const DeclNodes &p_parameters) {
     std::string type_string;

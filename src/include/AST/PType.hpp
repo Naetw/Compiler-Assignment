@@ -61,6 +61,8 @@ class PType {
     bool isString() const {
         return isPrimitiveString() && m_dimensions.empty();
     }
+
+    bool compare(const PType *p_type) const;
 };
 
 #endif

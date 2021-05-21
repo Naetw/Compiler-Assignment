@@ -22,7 +22,10 @@ class FunctionInvocationNode final : public ExpressionNode {
                            const char *const p_name, ExprNodes &p_args)
         : ExpressionNode{line, col}, m_name(p_name), m_args(std::move(p_args)){}
 
+    const std::string &getName() const { return m_name; }
     const char *getNameCString() const { return m_name.c_str(); }
+
+    const ExprNodes &getArguments() const { return m_args; }
 
     void accept(AstNodeVisitor &p_visitor) override { p_visitor.visit(*this); }
     void visitChildNodes(AstNodeVisitor &p_visitor) override;

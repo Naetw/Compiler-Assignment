@@ -32,6 +32,7 @@ class FunctionNode final : public AstNode {
           m_body(p_body) {}
 
     static std::string getParametersTypeString(const DeclNodes &p_parameters);
+    static DeclNodes::size_type getParametersNum(const DeclNodes &p_parameters);
 
     const std::string &getName() const { return m_name; }
     const char *getNameCString() const { return m_name.c_str(); }

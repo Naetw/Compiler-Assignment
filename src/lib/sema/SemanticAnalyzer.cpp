@@ -346,31 +346,99 @@ void SemanticAnalyzer::visit(UnaryOperatorNode &p_un_op) {
     setUnaryOpInferredType(p_un_op);
 }
 
-void SemanticAnalyzer::visit(FunctionInvocationNode &p_func_invocation) {
-    /*
-     * TODO:
-     *
-     * 1. Push a new symbol table if this node forms a scope.
-     * 2. Insert the symbol into current symbol table if this node is related to
-     *    declaration (ProgramNode, VariableNode, FunctionNode).
-     * 3. Travere child nodes of this node.
-     * 4. Perform semantic analyses of this node.
-     * 5. Pop the symbol table pushed at the 1st step.
-     */
-}
-
 static const SymbolEntry *
-checkVariableExistence(const SymbolManager &p_symbol_manager,
-                       const VariableReferenceNode &p_variable_ref) {
-    const auto *entry = p_symbol_manager.lookup(p_variable_ref.getName());
+checkSymbolExistence(const SymbolManager &p_symbol_manager,
+                     const std::string &p_name, const Location &p_location) {
+    const auto *entry = p_symbol_manager.lookup(p_name);
 
     if (entry == nullptr) {
-        logSemanticError(p_variable_ref.getLocation(),
-                         "use of undeclared symbol '%s'",
-                         p_variable_ref.getNameCString());
+        logSemanticError(p_location, "use of undeclared symbol '%s'",
+                         p_name.c_str());
     }
 
     return entry;
+}
+
+static bool validateFunctionInvocationKind(
+    const SymbolEntry::KindEnum kind,
+    const FunctionInvocationNode &p_func_invocation) {
+    if (kind != SymbolEntry::KindEnum::kFunctionKind) {
+        logSemanticError(p_func_invocation.getLocation(),
+                         "call of non-function symbol '%s'",
+                         p_func_invocation.getNameCString());
+        return false;
+    }
+    return true;
+}
+
+static bool validateArguments(const SymbolEntry *const p_entry,
+                              const FunctionInvocationNode &p_func_invocation) {
+    const auto &parameters = *p_entry->getAttribute().parameters();
+    const auto &arguments = p_func_invocation.getArguments();
+
+    if (arguments.size() != FunctionNode::getParametersNum(parameters)) {
+        logSemanticError(p_func_invocation.getLocation(),
+                         "too few/much arguments provided for function '%s'",
+                         p_func_invocation.getNameCString());
+        return false;
+    }
+
+    FunctionInvocationNode::ExprNodes::const_iterator argument_iter =
+        arguments.begin();
+
+    for (const auto &parameter : parameters) {
+        const auto &variables = parameter->getVariables();
+        for (const auto &variable : variables) {
+            auto *expr_type_ptr = (*argument_iter)->getInferredType();
+            if (!expr_type_ptr) {
+                return false;
+            }
+
+            if (!expr_type_ptr->compare(variable->getTypePtr())) {
+                logSemanticError(
+                    (*argument_iter)->getLocation(),
+                    "incompatible type passing '%s' to parameter of type '%s'",
+                    expr_type_ptr->getPTypeCString(),
+                    variable->getTypePtr()->getPTypeCString());
+                return false;
+            }
+
+            argument_iter++;
+        }
+    }
+
+    return true;
+}
+
+static void
+setFuncInvocationInferredType(FunctionInvocationNode &p_func_invocation,
+                              const SymbolEntry *p_entry) {
+    p_func_invocation.setInferredType(
+        new PType(p_entry->getTypePtr()->getPrimitiveType()));
+}
+
+void SemanticAnalyzer::visit(FunctionInvocationNode &p_func_invocation) {
+    p_func_invocation.visitChildNodes(*this);
+
+    const SymbolEntry *entry = nullptr;
+    if ((entry = checkSymbolExistence(
+             m_symbol_manager, p_func_invocation.getName(),
+             p_func_invocation.getLocation())) == nullptr) {
+        m_has_error = true;
+        return;
+    }
+
+    if (!validateFunctionInvocationKind(entry->getKind(), p_func_invocation)) {
+        m_has_error = true;
+        return;
+    }
+
+    if (!validateArguments(entry, p_func_invocation)) {
+        m_has_error = true;
+        return;
+    }
+
+    setFuncInvocationInferredType(p_func_invocation, entry);
 }
 
 static bool validateVariableKind(const SymbolEntry::KindEnum kind,
@@ -421,8 +489,9 @@ void SemanticAnalyzer::visit(VariableReferenceNode &p_variable_ref) {
     p_variable_ref.visitChildNodes(*this);
 
     const SymbolEntry *entry = nullptr;
-    if ((entry = checkVariableExistence(m_symbol_manager, p_variable_ref)) ==
-        nullptr) {
+    if ((entry =
+             checkSymbolExistence(m_symbol_manager, p_variable_ref.getName(),
+                                  p_variable_ref.getLocation())) == nullptr) {
         return;
     }
 

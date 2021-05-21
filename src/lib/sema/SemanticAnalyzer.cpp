@@ -205,8 +205,8 @@ static bool validateBinaryOperands(BinaryOperatorNode &p_bin_op) {
     case Operator::kMinusOp:
     case Operator::kMultiplyOp:
     case Operator::kDivideOp:
-        if (validateOperandsInArithmeticOp(p_bin_op.getOp(),
-                                           left_type_ptr, right_type_ptr)) {
+        if (validateOperandsInArithmeticOp(p_bin_op.getOp(), left_type_ptr,
+                                           right_type_ptr)) {
             return true;
         }
         break;
@@ -232,8 +232,7 @@ static bool validateBinaryOperands(BinaryOperatorNode &p_bin_op) {
         }
         break;
     default:
-        assert(false &&
-               "unknown binary op or unary op");
+        assert(false && "unknown binary op or unary op");
     }
 
     logSemanticError(p_bin_op.getLocation(),
@@ -280,8 +279,7 @@ static void setBinaryOpInferredType(BinaryOperatorNode &p_bin_op) {
             new PType(PType::PrimitiveTypeEnum::kBoolType));
         return;
     default:
-        assert(false &&
-               "unknown binary op or unary op");
+        assert(false && "unknown binary op or unary op");
     }
 }
 
@@ -296,17 +294,56 @@ void SemanticAnalyzer::visit(BinaryOperatorNode &p_bin_op) {
     setBinaryOpInferredType(p_bin_op);
 }
 
+static bool validateUnaryOperand(const UnaryOperatorNode &p_un_op) {
+    const auto *const operand_type = p_un_op.getOperand().getInferredType();
+    if (!operand_type) {
+        return false;
+    }
+
+    switch (p_un_op.getOp()) {
+    case Operator::kNegOp:
+        if (operand_type->isInteger() || operand_type->isReal()) {
+            return true;
+        }
+        break;
+    case Operator::kNotOp:
+        if (operand_type->isBool()) {
+            return true;
+        }
+        break;
+    default:
+        assert(false && "unknown binary op or unary op");
+    }
+
+    logSemanticError(p_un_op.getLocation(),
+                     "invalid operand to unary operator '%s' ('%s')",
+                     p_un_op.getOpCString(), operand_type->getPTypeCString());
+    return false;
+}
+
+static void setUnaryOpInferredType(UnaryOperatorNode &p_un_op) {
+    switch (p_un_op.getOp()) {
+    case Operator::kNegOp:
+        p_un_op.setInferredType(new PType(
+            p_un_op.getOperand().getInferredType()->getPrimitiveType()));
+        return;
+    case Operator::kNotOp:
+        p_un_op.setInferredType(new PType(PType::PrimitiveTypeEnum::kBoolType));
+        return;
+    default:
+        assert(false && "unknown binary op or unary op");
+    }
+}
+
 void SemanticAnalyzer::visit(UnaryOperatorNode &p_un_op) {
-    /*
-     * TODO:
-     *
-     * 1. Push a new symbol table if this node forms a scope.
-     * 2. Insert the symbol into current symbol table if this node is related to
-     *    declaration (ProgramNode, VariableNode, FunctionNode).
-     * 3. Travere child nodes of this node.
-     * 4. Perform semantic analyses of this node.
-     * 5. Pop the symbol table pushed at the 1st step.
-     */
+    p_un_op.visitChildNodes(*this);
+
+    if (!validateUnaryOperand(p_un_op)) {
+        m_has_error = true;
+        return;
+    }
+
+    setUnaryOpInferredType(p_un_op);
 }
 
 void SemanticAnalyzer::visit(FunctionInvocationNode &p_func_invocation) {

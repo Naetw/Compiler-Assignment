@@ -639,30 +639,35 @@ void SemanticAnalyzer::visit(ReadNode &p_read) {
     }
 }
 
+static bool validateConditionExpr(const ExpressionNode &p_condition) {
+    const auto *const type_ptr = p_condition.getInferredType();
+    if (!type_ptr) {
+        return false;
+    }
+
+    if (!type_ptr->isBool()) {
+        logSemanticError(p_condition.getLocation(),
+                         "the expression of condition must be boolean type");
+        return false;
+    }
+
+    return true;
+}
+
 void SemanticAnalyzer::visit(IfNode &p_if) {
-    /*
-     * TODO:
-     *
-     * 1. Push a new symbol table if this node forms a scope.
-     * 2. Insert the symbol into current symbol table if this node is related to
-     *    declaration (ProgramNode, VariableNode, FunctionNode).
-     * 3. Travere child nodes of this node.
-     * 4. Perform semantic analyses of this node.
-     * 5. Pop the symbol table pushed at the 1st step.
-     */
+    p_if.visitChildNodes(*this);
+
+    if (!validateConditionExpr(p_if.getCondition())) {
+        m_has_error = true;
+    }
 }
 
 void SemanticAnalyzer::visit(WhileNode &p_while) {
-    /*
-     * TODO:
-     *
-     * 1. Push a new symbol table if this node forms a scope.
-     * 2. Insert the symbol into current symbol table if this node is related to
-     *    declaration (ProgramNode, VariableNode, FunctionNode).
-     * 3. Travere child nodes of this node.
-     * 4. Perform semantic analyses of this node.
-     * 5. Pop the symbol table pushed at the 1st step.
-     */
+    p_while.visitChildNodes(*this);
+
+    if (!validateConditionExpr(p_while.getCondition())) {
+        m_has_error = true;
+    }
 }
 
 void SemanticAnalyzer::visit(ForNode &p_for) {

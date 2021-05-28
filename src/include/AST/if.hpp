@@ -21,6 +21,8 @@ class IfNode final : public AstNode {
         : AstNode{line, col}, m_condition(p_condition), m_body(p_body),
           m_else_body(p_else_body){}
 
+    const ExpressionNode &getCondition() const { return *m_condition.get(); }
+
     void accept(AstNodeVisitor &p_visitor) override { p_visitor.visit(*this); }
     void visitChildNodes(AstNodeVisitor &p_visitor) override;
 };

@@ -171,7 +171,7 @@ float {integer}\.(0|[0-9]*[1-9])
 [ \t]+ { LIST; }
 
     /* Pseudocomment */
-"//&"[ST][+-].* {
+"//&"[STD][+-].* {
     LIST;
     char option = yytext[3];
     switch (option) {
@@ -183,6 +183,7 @@ float {integer}\.(0|[0-9]*[1-9])
         break;
     case 'D':
         opt_dmp = (yytext[4] == '+') ? 1 : 0;
+        break;
     }
 }
 

@@ -19,6 +19,7 @@ class SemanticAnalyzer final : public AstNodeVisitor {
   private:
     SymbolManager m_symbol_manager;
     std::stack<SemanticContext> m_context_stack;
+    std::stack<const PType *> m_returned_type_stack;
 
     std::set<SymbolEntry *> m_error_entry_set;
 

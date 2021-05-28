@@ -23,6 +23,9 @@ class ForNode final : public AstNode {
           m_init_stmt(p_init_stmt), m_end_condition(p_end_condition),
           m_body(p_body) {}
 
+    const ConstantValueNode &getLowerBound() const;
+    const ConstantValueNode &getUpperBound() const;
+
     void accept(AstNodeVisitor &p_visitor) override { p_visitor.visit(*this); }
     void visitChildNodes(AstNodeVisitor &p_visitor) override;
 };

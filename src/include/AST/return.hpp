@@ -17,6 +17,8 @@ class ReturnNode final : public AstNode {
                ExpressionNode *p_ret_val)
         : AstNode{line, col}, m_ret_val(p_ret_val){}
 
+    const ExpressionNode &getReturnValue() const { return *m_ret_val.get(); }
+
     void accept(AstNodeVisitor &p_visitor) override { p_visitor.visit(*this); }
     void visitChildNodes(AstNodeVisitor &p_visitor) override;
 };

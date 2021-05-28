@@ -61,6 +61,9 @@ class PType {
     bool isString() const {
         return isPrimitiveString() && m_dimensions.empty();
     }
+    bool isVoid() const {
+        return m_type == PrimitiveTypeEnum::kVoidType && m_dimensions.empty();
+    }
 
     bool isScalar() const {
         return m_dimensions.empty() && m_type != PrimitiveTypeEnum::kVoidType;

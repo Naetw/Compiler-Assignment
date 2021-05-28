@@ -11,6 +11,7 @@ static constexpr const char *kRedeclaredSymbolErrorMessage =
 void SemanticAnalyzer::visit(ProgramNode &p_program) {
     m_symbol_manager.pushGlobalScope();
     m_context_stack.push(SemanticContext::kGlobal);
+    m_returned_type_stack.push(p_program.getTypePtr());
 
     auto success = m_symbol_manager.addSymbol(
         p_program.getName(), SymbolEntry::KindEnum::kProgramKind,
@@ -29,6 +30,7 @@ void SemanticAnalyzer::visit(ProgramNode &p_program) {
      * 4. Perform semantic analyses of this node.
      */
 
+    m_returned_type_stack.pop();
     m_context_stack.pop();
     m_symbol_manager.popGlobalScope();
 }
@@ -117,6 +119,7 @@ void SemanticAnalyzer::visit(FunctionNode &p_function) {
 
     m_symbol_manager.pushScope();
     m_context_stack.push(SemanticContext::kFunction);
+    m_returned_type_stack.push(p_function.getTypePtr());
 
     auto visit_ast_node = [this](auto &ast_node) { ast_node->accept(*this); };
     for_each(p_function.getParameters().begin(),
@@ -127,12 +130,7 @@ void SemanticAnalyzer::visit(FunctionNode &p_function) {
     p_function.visitBodyChildNodes(*this);
     m_context_stack.pop();
 
-    /*
-     * TODO:
-     *
-     * 4. Perform semantic analyses of this node.
-     */
-
+    m_returned_type_stack.pop();
     m_context_stack.pop();
     m_symbol_manager.popScope();
 }
@@ -670,31 +668,66 @@ void SemanticAnalyzer::visit(WhileNode &p_while) {
     }
 }
 
+static bool validateForLoopBound(const ForNode &p_for) {
+    auto initial_value = p_for.getLowerBound().getConstantPtr()->integer();
+    auto condition_value = p_for.getUpperBound().getConstantPtr()->integer();
+
+    if (initial_value >= condition_value) {
+        logSemanticError(p_for.getLocation(),
+                         "the lower bound and upper bound of iteration count "
+                         "must be in the incremental order");
+        return false;
+    }
+
+    return true;
+}
+
 void SemanticAnalyzer::visit(ForNode &p_for) {
     m_symbol_manager.pushScope();
     m_context_stack.push(SemanticContext::kForLoop);
 
     p_for.visitChildNodes(*this);
 
-    /*
-     * TODO:
-     *
-     * 4. Perform semantic analyses of this node.
-     */
+    if (!validateForLoopBound(p_for)) {
+        m_has_error = true;
+    }
 
     m_context_stack.pop();
     m_symbol_manager.popScope();
 }
 
+static bool validateReturnValueType(const ExpressionNode &p_retval,
+                                    const PType *const p_expected_return_type) {
+    const auto *const retval_type_ptr = p_retval.getInferredType();
+    if (!retval_type_ptr) {
+        return false;
+    }
+
+    if (!p_expected_return_type->compare(retval_type_ptr)) {
+        logSemanticError(p_retval.getLocation(),
+                         "return '%s' from a function with return type '%s'",
+                         retval_type_ptr->getPTypeCString(),
+                         p_expected_return_type->getPTypeCString());
+        return false;
+    }
+
+    return true;
+}
+
 void SemanticAnalyzer::visit(ReturnNode &p_return) {
-    /*
-     * TODO:
-     *
-     * 1. Push a new symbol table if this node forms a scope.
-     * 2. Insert the symbol into current symbol table if this node is related to
-     *    declaration (ProgramNode, VariableNode, FunctionNode).
-     * 3. Travere child nodes of this node.
-     * 4. Perform semantic analyses of this node.
-     * 5. Pop the symbol table pushed at the 1st step.
-     */
+    p_return.visitChildNodes(*this);
+
+    const auto *const expected_return_type_ptr = m_returned_type_stack.top();
+    if (expected_return_type_ptr->isVoid()) {
+        logSemanticError(p_return.getLocation(),
+                         "program/procedure should not return a value");
+        m_has_error = true;
+        return;
+    }
+
+    if (!validateReturnValueType(p_return.getReturnValue(),
+                                 expected_return_type_ptr)) {
+        m_has_error = true;
+        return;
+    }
 }

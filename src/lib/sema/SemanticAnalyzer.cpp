@@ -147,17 +147,27 @@ void SemanticAnalyzer::visit(CompoundStatementNode &p_compound_statement) {
     m_symbol_manager.popScope();
 }
 
+static bool validatePrintTarget(const PrintNode &p_print) {
+    const auto *const target_type_ptr = p_print.getTarget().getInferredType();
+    if (!target_type_ptr) {
+        return false;
+    }
+
+    if (!target_type_ptr->isScalar()) {
+        logSemanticError(p_print.getTarget().getLocation(),
+                         "expression of print statement must be scalar type");
+        return false;
+    }
+
+    return true;
+}
+
 void SemanticAnalyzer::visit(PrintNode &p_print) {
-    /*
-     * TODO:
-     *
-     * 1. Push a new symbol table if this node forms a scope.
-     * 2. Insert the symbol into current symbol table if this node is related to
-     *    declaration (ProgramNode, VariableNode, FunctionNode).
-     * 3. Travere child nodes of this node.
-     * 4. Perform semantic analyses of this node.
-     * 5. Pop the symbol table pushed at the 1st step.
-     */
+    p_print.visitChildNodes(*this);
+
+    if (!validatePrintTarget(p_print)) {
+        m_has_error = true;
+    }
 }
 
 static bool validateOperandsInArithmeticOp(const Operator op,
@@ -529,17 +539,42 @@ void SemanticAnalyzer::visit(AssignmentNode &p_assignment) {
      */
 }
 
+static bool validateReadTarget(const ReadNode &p_read,
+                               const SymbolManager &p_symbol_manager) {
+    const auto *const target_type_ptr = p_read.getTarget().getInferredType();
+    if (!target_type_ptr) {
+        return false;
+    }
+
+    if (!target_type_ptr->isScalar()) {
+        logSemanticError(
+            p_read.getTarget().getLocation(),
+            "variable reference of read statement must be scalar type");
+        return false;
+    }
+
+    const auto *const entry =
+        p_symbol_manager.lookup(p_read.getTarget().getName());
+    assert(entry && "Shouldn't reach here. This should be catched during the"
+                    "visits of child nodes");
+
+    if (entry->getKind() == SymbolEntry::KindEnum::kConstantKind ||
+        entry->getKind() == SymbolEntry::KindEnum::kLoopVarKind) {
+        logSemanticError(p_read.getTarget().getLocation(),
+                         "variable reference of read statement cannot be a "
+                         "constant or loop variable");
+        return false;
+    }
+
+    return true;
+}
+
 void SemanticAnalyzer::visit(ReadNode &p_read) {
-    /*
-     * TODO:
-     *
-     * 1. Push a new symbol table if this node forms a scope.
-     * 2. Insert the symbol into current symbol table if this node is related to
-     *    declaration (ProgramNode, VariableNode, FunctionNode).
-     * 3. Travere child nodes of this node.
-     * 4. Perform semantic analyses of this node.
-     * 5. Pop the symbol table pushed at the 1st step.
-     */
+    p_read.visitChildNodes(*this);
+
+    if (!validateReadTarget(p_read, m_symbol_manager)) {
+        m_has_error = true;
+    }
 }
 
 void SemanticAnalyzer::visit(IfNode &p_if) {

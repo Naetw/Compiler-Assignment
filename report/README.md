@@ -2,21 +2,77 @@
 
 |||
 |-:|:-|
-|Name|yourname|
-|ID|your student id|
+|Name|趙益揚|
+|ID|0856058|
 
 ## How much time did you spend on this project
 
-e.g. 2 hours.
+13 hours.（報告約 1hr）
 
 ## Project overview
 
-Describe the project structure and how you implemented it.
+以下僅記錄較大的新增/改動。
+
+### [新增] `SymbolTable`-related Modules
+
+#### `SymbolManager`
+
+管理所有外部所需，跟符號表 (symbol tables) 相關的行為，像是新增符號、新增/刪除作用範圍 (scope)。
+
+擁有以下幾個資料成員：
+
+- `m_in_use_tables`: 記錄使用中的符號表。
+- `m_popped_tables`: 記錄被「暫時」移除的符號表（像是離開某個函式/複合陳述式所定義出來的作用範圍），讓符號表在程式中不同狀態下的符號資訊得以保留並重用。
+- `m_hash_entries`: 方便快速查詢不合法的符號重複定義。
+- `m_hidden_entries`: 合法重複定義符號時，用來記錄被覆蓋的符號在符號表中的項目 (entry)。
+- `m_current_table`: 記錄當前使用中的那一張符號表，用來輸出符號表內容、從雜湊表中移除符號、新增符號。
+- `m_current_level`: 根據程式結構中新增/刪除作用範圍來增減符號表的層級。
+- `m_opt_dmp`: 會在呼叫建構子時傳入，決定所有被此物件管理的符號表在離開作用範圍時需不需要輸出內容。
+
+#### `SymbolTable`
+
+儲存符號項目用的資料結構。
+
+#### `SymbolEntry`
+
+符號項目本身的資料結構，資料成員基本上就是根據 spec 開的需求來設計。
+
+#### `Attribute`
+
+用來存放符號項目需要的一些額外資訊：常數變數需要多存常數的數值、函式宣告需要記錄有哪些參數。
+
+### [新增] `SemanticAnalyzer`
+
+用來做語意分析，屬於訪問者 (visitor)。
+
+擁有以下幾個資料成員：
+
+- `m_symbol_manager`: 在巡訪到特定節點時會需要新增符號，這時就會透過此物件來處理。
+- `m_context_stack`: 用以記錄當前上下文內容，可能是全域範圍、函式範圍、迴圈範圍、區域範圍。有些語意在不同上下文屬性及合法性會不同，例：
+	- 在全域範圍內宣告的變數會是全域變數；在迴圈範圍宣告的變數為迴圈變數。
+	- 迴圈用的變數只能在迴圈自身做修改，內部的區域範圍是不能做更動的。
+- `m_returned_type_stack`: 用以記錄當前上下文應該要有的回傳型別，用以檢查回傳陳述式的語意。
+- `m_has_error`: 記錄是否發生過任一語意錯誤。
+
+### [修改] `PType`
+
+新增了不少用來供外部讀取型別資料的成員函式（語意分析需要），以及比較函式（用以跟不同型別物件比較彼此型別是否相同）。
+
+### [修改] `ExpressionNode`
+
+新增資料成員 `m_type` 用來記錄此表達式被推論出的型別，語意分析時會需要知道每個表達式的型別以決定此表達式不合法的使用情況。
 
 ## What is the hardest you think in this project
 
-Let us know, if any.
+因為我寫過一次了，所以大部分的邏輯都可以參考之前寫的，這次主要做的事是把不合理、不乾淨的設計拔掉、整理，也是撰寫此次作業較為困難的地方。
+
+像是一個類別多數情況不應該有 `const` 成員，會讓物件在複製 (copy)、搬移 (move) 語意上顯得很奇怪，要做到 `const` 效果，用私有成員以及公開介面來控制即可 [1]。
+
+再來像是一個符號項目要純帶有符號資訊就好還是連一些語意上的資訊也要一併處理？之前的設計是一併處理，但即使程式碼是自己（n 個月前）寫的，乍看看到一些奇怪的資料成員也是會卡住不知道這是做什麼用的。
+原因很簡單，因為參雜了直觀下不應該擁有的資訊（複雜化），所以這次有把一些設計、資訊整理跟抽離，放到更適合的類別去。
+
+[1]: https://www.reddit.com/r/cpp/comments/8wbeom/coding_guideline_avoid_const_member_variables/
 
 ## Feedback to T.A.s
 
-> Please help us improve our assignment, thanks.
+請送我酷酷的石頭

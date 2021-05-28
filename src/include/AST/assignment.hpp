@@ -18,6 +18,9 @@ class AssignmentNode final : public AstNode {
                    VariableReferenceNode *p_var_ref, ExpressionNode *p_expr)
         : AstNode{line, col}, m_lvalue(p_var_ref), m_expr(p_expr){}
 
+    const VariableReferenceNode &getLvalue() const { return *m_lvalue.get(); }
+    const ExpressionNode &getExpr() const { return *m_expr.get(); }
+
     void accept(AstNodeVisitor &p_visitor) override { p_visitor.visit(*this); }
     void visitChildNodes(AstNodeVisitor &p_visitor) override;
 };

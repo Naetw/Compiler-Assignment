@@ -526,17 +526,79 @@ void SemanticAnalyzer::visit(VariableReferenceNode &p_variable_ref) {
         p_variable_ref.getIndices().size()));
 }
 
+static bool validateAssignmentLvalue(const AssignmentNode &p_assignment,
+                                     const SymbolManager &p_symbol_manager,
+                                     const bool is_in_for_loop) {
+    const auto &lvalue = p_assignment.getLvalue();
+
+    const auto *const lvalue_type_ptr = lvalue.getInferredType();
+    if (!lvalue_type_ptr) {
+        return false;
+    }
+
+    if (!lvalue_type_ptr->isScalar()) {
+        logSemanticError(lvalue.getLocation(),
+                         "array assignment is not allowed");
+        return false;
+    }
+
+    const auto *const entry = p_symbol_manager.lookup(lvalue.getName());
+    if (entry->getKind() == SymbolEntry::KindEnum::kConstantKind) {
+        logSemanticError(lvalue.getLocation(),
+                         "cannot assign to variable '%s' which is a constant",
+                         lvalue.getNameCString());
+        return false;
+    }
+
+    if (!is_in_for_loop &&
+        entry->getKind() == SymbolEntry::KindEnum::kLoopVarKind) {
+        logSemanticError(lvalue.getLocation(),
+                         "the value of loop variable cannot be modified inside "
+                         "the loop body");
+        return false;
+    }
+
+    return true;
+}
+
+static bool validateAssignmentExpr(const AssignmentNode &p_assignment) {
+    const auto &expr = p_assignment.getExpr();
+    const auto *const expr_type_ptr = expr.getInferredType();
+    if (!expr_type_ptr) {
+        return false;
+    }
+
+    if (!expr_type_ptr->isScalar()) {
+        logSemanticError(expr.getLocation(), "array assignment is not allowed");
+        return false;
+    }
+
+    const auto *const lvalue_type_ptr =
+        p_assignment.getLvalue().getInferredType();
+    if (!lvalue_type_ptr->compare(expr_type_ptr)) {
+        logSemanticError(p_assignment.getLocation(),
+                         "assigning to '%s' from incompatible type '%s'",
+                         lvalue_type_ptr->getPTypeCString(),
+                         expr_type_ptr->getPTypeCString());
+        return false;
+    }
+
+    return true;
+}
+
 void SemanticAnalyzer::visit(AssignmentNode &p_assignment) {
-    /*
-     * TODO:
-     *
-     * 1. Push a new symbol table if this node forms a scope.
-     * 2. Insert the symbol into current symbol table if this node is related to
-     *    declaration (ProgramNode, VariableNode, FunctionNode).
-     * 3. Travere child nodes of this node.
-     * 4. Perform semantic analyses of this node.
-     * 5. Pop the symbol table pushed at the 1st step.
-     */
+    p_assignment.visitChildNodes(*this);
+
+    if (!validateAssignmentLvalue(p_assignment, m_symbol_manager,
+                                  isInForLoop())) {
+        m_has_error = true;
+        return;
+    }
+
+    if (!validateAssignmentExpr(p_assignment)) {
+        m_has_error = true;
+        return;
+    }
 }
 
 static bool validateReadTarget(const ReadNode &p_read,

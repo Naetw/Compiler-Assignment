@@ -56,8 +56,6 @@ class SymbolEntry {
     const PType *m_p_type;
     Attribute m_attribute;
 
-    bool m_has_error = false;
-
   public:
     ~SymbolEntry() = default;
 
@@ -83,10 +81,6 @@ class SymbolEntry {
     const PType *getTypePtr() const { return m_p_type; };
 
     const Attribute &getAttribute() const { return m_attribute; };
-
-    bool hasError() const { return m_has_error; };
-
-    void setError() { m_has_error = true; };
 };
 
 class SymbolTable {

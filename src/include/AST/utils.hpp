@@ -1,17 +1,18 @@
-#ifndef __AST_UTILS_H
-#define __AST_UTILS_H
+#ifndef AST_UTILS_H
+#define AST_UTILS_H
 
 #include "AST/ast.hpp"
 
 #include <cstdint>
+#include <string>
 
-// For carrying identifier through the IdList
+// for carrying identifier info through IdList
 struct IdInfo {
-    IdInfo(const uint32_t line, const uint32_t col, const char *p_id)
-        : location(line, col), id(p_id) {}
-
     Location location;
     std::string id;
+
+    IdInfo(const uint32_t line, const uint32_t col, const char * const p_id)
+        : location(line, col), id(p_id) {}
 };
 
 #endif

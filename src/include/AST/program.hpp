@@ -1,48 +1,44 @@
-#ifndef __AST_PROGRAM_NODE_H
-#define __AST_PROGRAM_NODE_H
+#ifndef AST_PROGRAM_NODE_H
+#define AST_PROGRAM_NODE_H
 
-#include "AST/CompoundStatement.hpp"
-#include "AST/PType.hpp"
 #include "AST/ast.hpp"
 #include "AST/decl.hpp"
 #include "AST/function.hpp"
 
 #include <memory>
+#include <string>
 #include <vector>
 
-class SymbolTable;
-
-class ProgramNode : public AstNode {
+class ProgramNode final : public AstNode {
   public:
-    typedef std::vector<std::unique_ptr<DeclNode>> Decls;
-    typedef std::vector<std::unique_ptr<FunctionNode>> Funcs;
-
-    ProgramNode(const uint32_t line, const uint32_t col,
-                const PType *p_return_type, const char *p_name,
-                Decls *p_var_decls, Funcs *p_funcs,
-                CompoundStatementNode *p_body);
-    ~ProgramNode() = default;
-
-    const std::string &getName() const;
-    const char *getNameCString() const;
-
-    const PType *getTypePtr() const;
-    const char *getTypeCString() const;
-
-    void setSymbolTable(const SymbolTable *table);
-    const SymbolTable *getSymbolTable() const;
-
-    void accept(AstNodeVisitor &p_visitor) override;
-    void visitChildNodes(AstNodeVisitor &p_visitor) override;
+    using DeclNodes = std::vector<std::unique_ptr<DeclNode>>;
+    using FuncNodes = std::vector<std::unique_ptr<FunctionNode>>;
 
   private:
-    std::unique_ptr<const PType> return_type;
-    const std::string name;
-    Decls var_decls;
-    Funcs funcs;
-    std::unique_ptr<CompoundStatementNode> body;
+    std::string m_name;
+    std::unique_ptr<PType> m_ret_type;
+    DeclNodes m_decl_nodes;
+    FuncNodes m_func_nodes;
+    std::unique_ptr<CompoundStatementNode> m_body;
 
-    const SymbolTable *symbol_table;
+  public:
+    ~ProgramNode() = default;
+    ProgramNode(const uint32_t line, const uint32_t col,
+                const char *const p_name, PType *const p_ret_type,
+                DeclNodes &p_decl_nodes, FuncNodes &p_func_nodes,
+                CompoundStatementNode *const p_body)
+        : AstNode{line, col}, m_name(p_name), m_ret_type(p_ret_type),
+          m_decl_nodes(std::move(p_decl_nodes)),
+          m_func_nodes(std::move(p_func_nodes)), m_body(p_body) {}
+
+    const char *getNameCString() const { return m_name.c_str(); }
+    const std::string &getName() const { return m_name; }
+
+    const PType *getTypePtr() const { return m_ret_type.get(); }
+
+    void accept(AstNodeVisitor &p_visitor) override { p_visitor.visit(*this); }
+
+    void visitChildNodes(AstNodeVisitor &p_visitor) override;
 };
 
 #endif

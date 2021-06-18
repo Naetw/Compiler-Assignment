@@ -1,5 +1,5 @@
-#ifndef __AST_OPERATOR_H
-#define __AST_OPERATOR_H
+#ifndef AST_OPERATOR_H
+#define AST_OPERATOR_H
 
 enum class Operator : uint8_t {
     kNegOp,

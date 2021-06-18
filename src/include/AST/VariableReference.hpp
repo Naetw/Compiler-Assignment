@@ -1,32 +1,42 @@
-#ifndef __AST_VARIABLE_REFERENCE_NODE_H
-#define __AST_VARIABLE_REFERENCE_NODE_H
+#ifndef AST_VARIABLE_REFERENCE_NODE_H
+#define AST_VARIABLE_REFERENCE_NODE_H
 
 #include "AST/expression.hpp"
+#include "visitor/AstNodeVisitor.hpp"
 
 #include <memory>
+#include <string>
 #include <vector>
 
-class VariableReferenceNode : public ExpressionNode {
+class VariableReferenceNode final : public ExpressionNode {
   public:
-    typedef std::vector<std::unique_ptr<ExpressionNode>> Exprs;
-
-    VariableReferenceNode(const uint32_t line, const uint32_t col,
-                          const char *p_name);
-    VariableReferenceNode(const uint32_t line, const uint32_t col,
-                          const char *p_name, Exprs *p_indices);
-    ~VariableReferenceNode() = default;
-
-    const std::string &getName() const;
-    const char *getNameCString() const;
-
-    const Exprs &getIndices() const;
-
-    void accept(AstNodeVisitor &p_visitor) override;
-    void visitChildNodes(AstNodeVisitor &p_visitor) override;
+    using ExprNodes = std::vector<std::unique_ptr<ExpressionNode>>;
 
   private:
-    const std::string name;
-    Exprs indices;
+    std::string m_name;
+    ExprNodes m_indices;
+
+  public:
+    ~VariableReferenceNode() = default;
+
+    // normal reference
+    VariableReferenceNode(const uint32_t line, const uint32_t col,
+                          const char *const p_name)
+        : ExpressionNode{line, col}, m_name(p_name){}
+
+    // array reference
+    VariableReferenceNode(const uint32_t line, const uint32_t col,
+                          const char *const p_name, ExprNodes &p_indices)
+        : ExpressionNode{line, col}, m_name(p_name),
+          m_indices(std::move(p_indices)){}
+
+    const std::string &getName() const { return m_name; }
+    const char *getNameCString() const { return m_name.c_str(); }
+
+    const ExprNodes &getIndices() const { return m_indices; }
+
+    void accept(AstNodeVisitor &p_visitor) override { p_visitor.visit(*this); }
+    void visitChildNodes(AstNodeVisitor &p_visitor) override;
 };
 
 #endif

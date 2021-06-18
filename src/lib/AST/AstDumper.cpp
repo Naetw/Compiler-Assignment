@@ -1,5 +1,21 @@
 #include "AST/AstDumper.hpp"
-#include "visitor/AstNodeInclude.hpp"
+#include "AST/BinaryOperator.hpp"
+#include "AST/CompoundStatement.hpp"
+#include "AST/ConstantValue.hpp"
+#include "AST/FunctionInvocation.hpp"
+#include "AST/UnaryOperator.hpp"
+#include "AST/VariableReference.hpp"
+#include "AST/assignment.hpp"
+#include "AST/decl.hpp"
+#include "AST/for.hpp"
+#include "AST/function.hpp"
+#include "AST/if.hpp"
+#include "AST/print.hpp"
+#include "AST/program.hpp"
+#include "AST/read.hpp"
+#include "AST/return.hpp"
+#include "AST/variable.hpp"
+#include "AST/while.hpp"
 
 #include <cstdio>
 
@@ -20,7 +36,7 @@ void AstDumper::visit(ProgramNode &p_program) {
 
     std::printf("program <line: %u, col: %u> %s %s\n",
                 p_program.getLocation().line, p_program.getLocation().col,
-                p_program.getNameCString(), p_program.getTypeCString());
+                p_program.getNameCString(), "void");
 
     incrementIndentation();
     p_program.visitChildNodes(*this);
@@ -32,6 +48,7 @@ void AstDumper::visit(DeclNode &p_decl) {
 
     std::printf("declaration <line: %u, col: %u>\n", p_decl.getLocation().line,
                 p_decl.getLocation().col);
+
     incrementIndentation();
     p_decl.visitChildNodes(*this);
     decrementIndentation();

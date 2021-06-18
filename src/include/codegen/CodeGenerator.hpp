@@ -1,15 +1,22 @@
-#ifndef __CODE_GENERATOR_H
-#define __CODE_GENERATOR_H
+#ifndef CODEGEN_CODE_GENERATOR_H
+#define CODEGEN_CODE_GENERATOR_H
 
 #include "sema/SymbolTable.hpp"
 #include "visitor/AstNodeVisitor.hpp"
 
-class CodeGenerator : public AstNodeVisitor {
-  public:
-    CodeGenerator(const char *in_file_name, const char *out_file_name, SymbolManager *symbol_manager);
-    ~CodeGenerator();
+#include <memory>
 
-    void dumpInstrs(const char *format, ...);
+class CodeGenerator final : public AstNodeVisitor {
+  private:
+    const SymbolManager *m_symbol_manager_ptr;
+    std::string m_source_file_path;
+    std::unique_ptr<FILE> m_output_file;
+
+  public:
+    ~CodeGenerator() = default;
+    CodeGenerator(const std::string source_file_name,
+                  const std::string save_path,
+                  const SymbolManager *const p_symbol_manager);
 
     void visit(ProgramNode &p_program) override;
     void visit(DeclNode &p_decl) override;
@@ -28,11 +35,6 @@ class CodeGenerator : public AstNodeVisitor {
     void visit(WhileNode &p_while) override;
     void visit(ForNode &p_for) override;
     void visit(ReturnNode &p_return) override;
-
-  private:
-    const char *in_file_name;
-    FILE *out_fp;
-    SymbolManager *symbol_manager;
 };
 
 #endif

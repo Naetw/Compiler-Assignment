@@ -1,35 +1,41 @@
-#ifndef __AST_CONSTANT_H
-#define __AST_CONSTANT_H
+#ifndef AST_CONSTANT_H
+#define AST_CONSTANT_H
 
 #include "AST/PType.hpp"
 
 #include <cstdint>
-#include <memory>
+#include <cstdlib>
 
 class Constant {
   public:
     union ConstantValue {
-        int32_t integer;
+        int64_t integer;
         double real;
-        bool boolean;
         char *string;
+        bool boolean;
     };
-    Constant(const PTypeSharedPtr &p_type, ConstantValue &p_value);
-    ~Constant();
-
-    const PTypeSharedPtr &getTypePtr() const;
-    const char *getConstantValueCString() const;
-
-    const int32_t integer() const;
-    const double real() const;
-    const bool boolean() const;
-    const char *string() const;
 
   private:
-    PTypeSharedPtr type;
-    ConstantValue value;
-    mutable std::string constant_value_string;
-    mutable bool constant_value_string_is_valid = false;
+    PTypeSharedPtr m_type;
+    ConstantValue m_value;
+    mutable std::string m_constant_value_string;
+    mutable bool m_constant_value_string_is_valid = false;
+
+  public:
+    ~Constant() {
+        if (m_type->getPrimitiveType() ==
+            PType::PrimitiveTypeEnum::kStringType) {
+            free(m_value.string);
+        }
+    }
+    Constant(const PTypeSharedPtr &p_type, const ConstantValue value)
+        : m_type(p_type), m_value(value) {}
+
+    const PType *getTypePtr() const { return m_type.get(); }
+    const PTypeSharedPtr &getTypeSharedPtr() const { return m_type; }
+    const char *getConstantValueCString() const;
+
+    decltype(m_value.integer) integer() const { return m_value.integer; }
 };
 
 #endif

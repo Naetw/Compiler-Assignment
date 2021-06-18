@@ -1,40 +1,31 @@
 #include "AST/function.hpp"
-#include "visitor/AstNodeVisitor.hpp"
+#include "AST/decl.hpp"
 
-#include <cassert>
+#include <algorithm>
 
-FunctionNode::FunctionNode(const uint32_t line, const uint32_t col,
-                           const char *p_name, Decls *p_parameters,
-                           const PType *p_type, CompoundStatementNode *p_body)
-    : AstNode{line, col}, name(p_name), parameters(std::move(*p_parameters)),
-      return_type(PTypeSharedPtr(p_type)), body(p_body), symbol_table(nullptr) {
+FunctionNode::DeclNodes::size_type
+FunctionNode::getParametersNum(const DeclNodes &p_parameters) {
+    FunctionNode::DeclNodes::size_type num = 0;
+
+    for (const auto &decl_node : p_parameters) {
+        num += decl_node->getVariables().size();
+    }
+
+    return num;
 }
 
-const std::string &FunctionNode::getName() const { return name; }
-
-const char *FunctionNode::getNameCString() const { return name.c_str(); }
-
-const PType *FunctionNode::getTypePtr() const { return return_type.get(); }
-
-const char *FunctionNode::getTypeCString() const {
-    return return_type->getPTypeCString();
-}
-
-const FunctionNode::Decls &FunctionNode::getParameters() const {
-    return parameters;
-}
-
-std::string FunctionNode::getParametersTypeString(const Decls &parameters) {
+std::string
+FunctionNode::getParametersTypeString(const DeclNodes &p_parameters) {
     std::string type_string;
 
-    for (const auto &parameter : parameters) {
-        for (const auto &var : parameter->getVariables()) {
-            type_string.append(var->getTypeCString()).append(", ");
+    for (const auto &parameter : p_parameters) {
+        for (const auto &var_node : parameter->getVariables()) {
+            type_string.append(var_node->getTypeCString()).append(", ");
         }
     }
 
-    if (!parameters.empty()) {
-        // remove the trailing ", "
+    if (!p_parameters.empty()) {
+        // remove trailing ", "
         type_string.erase(type_string.end() - 2, type_string.end());
     }
 
@@ -42,44 +33,31 @@ std::string FunctionNode::getParametersTypeString(const Decls &parameters) {
 }
 
 const char *FunctionNode::getPrototypeCString() const {
-    if (!prototype_string_is_valid) {
-        prototype_string += return_type->getPTypeCString();
+    if (!m_prototype_string_is_valid) {
+        m_prototype_string = m_ret_type->getPTypeCString();
 
-        prototype_string += " (";
-        prototype_string += getParametersTypeString(parameters);
-        prototype_string += ")";
-        prototype_string_is_valid = true;
+        m_prototype_string += " (";
+        m_prototype_string += getParametersTypeString(m_parameters);
+        m_prototype_string += ")";
+
+        m_prototype_string_is_valid = true;
     }
 
-    return prototype_string.c_str();
+    return m_prototype_string.c_str();
 }
-
-bool FunctionNode::isDefined() const { return (body) ? true : false; }
-
-FunctionNode::Decls::size_type
-FunctionNode::getParametersNum(const Decls &parameter_decls) {
-    FunctionNode::Decls::size_type num = 0;
-
-    for (const auto &decl : parameter_decls) {
-        num += decl->getVariables().size();
-    }
-
-    return num;
-}
-
-void FunctionNode::setSymbolTable(const SymbolTable *table) {
-    symbol_table = table;
-}
-
-const SymbolTable *FunctionNode::getSymbolTable() const { return symbol_table; }
-
-void FunctionNode::accept(AstNodeVisitor &p_visitor) { p_visitor.visit(*this); }
 
 void FunctionNode::visitChildNodes(AstNodeVisitor &p_visitor) {
-    for (auto &parameter : parameters) {
-        parameter->accept(p_visitor);
+    auto visit_ast_node = [&](auto &ast_node) { ast_node->accept(p_visitor); };
+
+    for_each(m_parameters.begin(), m_parameters.end(), visit_ast_node);
+
+    if (m_body) {
+        visit_ast_node(m_body);
     }
-    if (body) {
-        body->accept(p_visitor);
+}
+
+void FunctionNode::visitBodyChildNodes(AstNodeVisitor &p_visitor) {
+    if (m_body) {
+        m_body->visitChildNodes(p_visitor);
     }
 }

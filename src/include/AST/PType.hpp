@@ -1,14 +1,13 @@
-#ifndef __AST_PTYPE_H
-#define __AST_PTYPE_H
+#ifndef AST_P_TYPE_H
+#define AST_P_TYPE_H
 
-#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
 
 class PType;
 
-typedef std::shared_ptr<const PType> PTypeSharedPtr;
+using PTypeSharedPtr = std::shared_ptr<PType>;
 
 class PType {
   public:
@@ -20,37 +19,57 @@ class PType {
         kStringType
     };
 
-    PType(PrimitiveTypeEnum type);
+  private:
+    PrimitiveTypeEnum m_type;
+    std::vector<uint64_t> m_dimensions;
+    mutable std::string m_type_string;
+    mutable bool m_type_string_is_valid = false;
+
+  public:
     ~PType() = default;
+    PType(const PrimitiveTypeEnum type) : m_type(type) {}
 
-    void setDimensions(std::vector<uint64_t> &dims);
+    void setDimensions(std::vector<uint64_t> &p_dims) {
+        m_dimensions = std::move(p_dims);
+    }
 
-    const PrimitiveTypeEnum getPrimitiveType() const;
+    PrimitiveTypeEnum getPrimitiveType() const { return m_type; }
     const char *getPTypeCString() const;
-    const std::vector<uint64_t> &getDimensions() const;
 
-    bool isPrimitiveInteger() const;
-    bool isPrimitiveReal() const;
-    bool isPrimitiveBool() const;
-    bool isPrimitiveString() const;
+    const std::vector<uint64_t> &getDimensions() const { return m_dimensions; }
 
-    bool isVoid() const;
-    bool isInteger() const;
-    bool isReal() const;
-    bool isBool() const;
-    bool isString() const;
+    PType *getStructElementType(const std::size_t nth) const;
 
-    bool isScalar() const;
+    bool isPrimitiveInteger() const {
+        return m_type == PrimitiveTypeEnum::kIntegerType;
+    }
+    bool isPrimitiveReal() const {
+        return m_type == PrimitiveTypeEnum::kRealType;
+    }
+    bool isPrimitiveBool() const {
+        return m_type == PrimitiveTypeEnum::kBoolType;
+    }
+    bool isPrimitiveString() const {
+        return m_type == PrimitiveTypeEnum::kStringType;
+    }
+
+    bool isInteger() const {
+        return isPrimitiveInteger() && m_dimensions.empty();
+    }
+    bool isReal() const { return isPrimitiveReal() && m_dimensions.empty(); }
+    bool isBool() const { return isPrimitiveBool() && m_dimensions.empty(); }
+    bool isString() const {
+        return isPrimitiveString() && m_dimensions.empty();
+    }
+    bool isVoid() const {
+        return m_type == PrimitiveTypeEnum::kVoidType && m_dimensions.empty();
+    }
+
+    bool isScalar() const {
+        return m_dimensions.empty() && m_type != PrimitiveTypeEnum::kVoidType;
+    }
 
     bool compare(const PType *p_type) const;
-
-    PType *getStructElementType(std::size_t nth) const;
-
-  private:
-    PrimitiveTypeEnum type;
-    std::vector<uint64_t> dimensions;
-    mutable std::string type_string;
-    mutable bool type_string_is_valid = false;
 };
 
 #endif

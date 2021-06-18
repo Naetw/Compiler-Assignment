@@ -1,13 +1,33 @@
-#ifndef __SEMA_SEMANTIC_ANALYZER_H
-#define __SEMA_SEMANTIC_ANALYZER_H
+#ifndef SEMA_SEMANTIC_ANALYZER_H
+#define SEMA_SEMANTIC_ANALYZER_H
 
 #include "sema/SymbolTable.hpp"
 #include "visitor/AstNodeVisitor.hpp"
 
-class SemanticAnalyzer : public AstNodeVisitor {
+#include <set>
+#include <stack>
+
+class SemanticAnalyzer final : public AstNodeVisitor {
+  private:
+    enum class SemanticContext : uint8_t {
+        kGlobal,
+        kFunction,
+        kForLoop,
+        kLocal
+    };
+
+  private:
+    SymbolManager m_symbol_manager;
+    std::stack<SemanticContext> m_context_stack;
+    std::stack<const PType *> m_returned_type_stack;
+
+    std::set<SymbolEntry *> m_error_entry_set;
+
+    bool m_has_error = false;
+
   public:
-    SemanticAnalyzer(const bool opt_dmp);
     ~SemanticAnalyzer() = default;
+    SemanticAnalyzer(const bool opt_dmp) : m_symbol_manager(opt_dmp) {}
 
     void visit(ProgramNode &p_program) override;
     void visit(DeclNode &p_decl) override;
@@ -27,28 +47,19 @@ class SemanticAnalyzer : public AstNodeVisitor {
     void visit(ForNode &p_for) override;
     void visit(ReturnNode &p_return) override;
 
-    SymbolManager *getSymbolManager();
+    bool hasError() const { return m_has_error; }
+
+    const SymbolManager *getSymbolManager() const { return &m_symbol_manager; }
 
   private:
-    friend SymbolEntry *addSymbolFromVariableNode(SemanticAnalyzer &analyzer,
-                                                  VariableNode &p_variable);
-    friend bool isInForLoop(SemanticAnalyzer &analyzer);
-    friend bool isInLocal(SemanticAnalyzer &analyzer);
-    friend bool isInFunction(SemanticAnalyzer &analyzer);
-
-  private:
-    enum class SemanticContext : uint8_t {
-        kGlobal,
-        kFunction,
-        kForLoop,
-        kLocal
-    };
-
-    SymbolManager symbol_manager;
-
-    // record the context of current scope for performing special behavior
-    std::vector<SemanticContext> context_stack;
-    std::vector<const PType *> return_type_stack;
+    bool isInForLoop() const {
+        return m_context_stack.top() == SemanticContext::kForLoop;
+    }
+    bool isInFunction() const {
+        return m_context_stack.top() == SemanticContext::kFunction;
+    }
+    SymbolEntry::KindEnum determineVarKind(const VariableNode &p_var_node);
+    SymbolEntry *addSymbol(const VariableNode &p_var_node);
 };
 
 #endif

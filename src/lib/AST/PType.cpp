@@ -4,75 +4,46 @@
 
 const char *kTypeString[] = {"void", "integer", "real", "boolean", "string"};
 
-PType::PType(PrimitiveTypeEnum type) : type(type) {}
-
-void PType::setDimensions(std::vector<uint64_t> &dims) {
-    dimensions = std::move(dims);
-}
-
-const PType::PrimitiveTypeEnum PType::getPrimitiveType() const { return type; }
-
 // logical constness
 const char *PType::getPTypeCString() const {
-    if (!type_string_is_valid) {
-        type_string += kTypeString[static_cast<int>(type)];
+    if (!m_type_string_is_valid) {
+        m_type_string += kTypeString[static_cast<size_t>(m_type)];
 
-        if (dimensions.size() != 0) {
-            type_string += " ";
+        if (m_dimensions.size() != 0) {
+            m_type_string += " ";
 
-            for (const auto &dim : dimensions) {
-                type_string += "[" + std::to_string(dim) + "]";
+            for (const auto &dim : m_dimensions) {
+                m_type_string += "[" + std::to_string(dim) + "]";
             }
         }
-        type_string_is_valid = true;
+        m_type_string_is_valid = true;
     }
 
-    return type_string.c_str();
+    return m_type_string.c_str();
 }
 
-const std::vector<uint64_t> &PType::getDimensions() const { return dimensions; }
+PType *PType::getStructElementType(const std::size_t nth) const {
+    if (nth > m_dimensions.size()) {
+        return nullptr;
+    }
 
-bool PType::isVoid() const {
-    return type == PrimitiveTypeEnum::kVoidType && dimensions.empty();
-}
+    auto *type_ptr = new PType(m_type);
 
-bool PType::isPrimitiveInteger() const {
-    return type == PrimitiveTypeEnum::kIntegerType;
-}
+    std::vector<uint64_t> dims;
+    for (std::size_t i = nth; i < m_dimensions.size(); ++i) {
+        dims.emplace_back(m_dimensions[i]);
+    }
+    type_ptr->setDimensions(dims);
 
-bool PType::isPrimitiveReal() const {
-    return type == PrimitiveTypeEnum::kRealType;
-}
-
-bool PType::isPrimitiveBool() const {
-    return type == PrimitiveTypeEnum::kBoolType;
-}
-
-bool PType::isPrimitiveString() const {
-    return type == PrimitiveTypeEnum::kStringType;
-}
-
-bool PType::isInteger() const {
-    return isPrimitiveInteger() && dimensions.empty();
-}
-
-bool PType::isReal() const { return isPrimitiveReal() && dimensions.empty(); }
-
-bool PType::isBool() const { return isPrimitiveBool() && dimensions.empty(); }
-
-bool PType::isString() const {
-    return isPrimitiveString() && dimensions.empty();
-}
-
-bool PType::isScalar() const {
-    return dimensions.empty() && type != PrimitiveTypeEnum::kVoidType;
+    return type_ptr;
 }
 
 bool PType::compare(const PType *p_type) const {
-    switch (type) {
+    // primitive type comparison
+    switch(m_type) {
     case PrimitiveTypeEnum::kIntegerType:
     case PrimitiveTypeEnum::kRealType:
-        if (!(p_type->isPrimitiveInteger() || p_type->isPrimitiveReal())) {
+        if (!p_type->isPrimitiveInteger() && !p_type->isPrimitiveReal()) {
             return false;
         }
         break;
@@ -91,31 +62,16 @@ bool PType::compare(const PType *p_type) const {
         return false;
     }
 
-    auto &p_type_dims = p_type->getDimensions();
-    if (dimensions.size() != p_type_dims.size()) {
+    // dimensions comparison
+    auto &dimensions = p_type->getDimensions();
+    if (m_dimensions.size() != dimensions.size()) {
         return false;
     }
-
-    for (std::size_t i = 0; i < dimensions.size(); ++i) {
-        if (dimensions[i] != p_type_dims[i]) {
+    for (decltype(m_dimensions)::size_type i = 0; i < m_dimensions.size(); ++i) {
+        if (m_dimensions[i] != dimensions[i]) {
             return false;
         }
     }
+
     return true;
-}
-
-PType *PType::getStructElementType(const std::size_t nth) const {
-    if (nth > dimensions.size()) {
-        return nullptr;
-    }
-
-    auto *p_type = new PType(type);
-
-    std::vector<uint64_t> dims;
-    for (std::size_t i = nth; i < dimensions.size(); ++i) {
-        dims.emplace_back(dimensions[i]);
-    }
-    p_type->setDimensions(dims);
-
-    return p_type;
 }

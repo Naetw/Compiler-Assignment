@@ -1,55 +1,51 @@
-#ifndef __AST_FUNCTION_NODE_H
-#define __AST_FUNCTION_NODE_H
+#ifndef AST_FUNCTION_NODE_H
+#define AST_FUNCTION_NODE_H
 
 #include "AST/CompoundStatement.hpp"
-#include "AST/PType.hpp"
 #include "AST/ast.hpp"
-#include "AST/decl.hpp"
+#include "visitor/AstNodeVisitor.hpp"
 
 #include <memory>
+#include <string>
 #include <vector>
 
-class SymbolTable;
-
-class FunctionNode : public AstNode {
+class FunctionNode final : public AstNode {
   public:
-    typedef std::vector<std::unique_ptr<DeclNode>> Decls;
-
-    FunctionNode(const uint32_t line, const uint32_t col, const char *p_name,
-                 Decls *p_parameters, const PType *p_type,
-                 CompoundStatementNode *p_body);
-    ~FunctionNode() = default;
-
-    const std::string &getName() const;
-    const char *getNameCString() const;
-
-    const PType *getTypePtr() const;
-    const char *getTypeCString() const;
-
-    static std::string getParametersTypeString(const Decls &parameters);
-    const Decls &getParameters() const;
-    const char *getPrototypeCString() const;
-
-    bool isDefined() const;
-
-    void setSymbolTable(const SymbolTable *table);
-    const SymbolTable *getSymbolTable() const;
-
-    void accept(AstNodeVisitor &p_visitor) override;
-    void visitChildNodes(AstNodeVisitor &p_visitor) override;
-
-  public:
-    static Decls::size_type getParametersNum(const Decls &parameters);
+    using DeclNodes = std::vector<std::unique_ptr<DeclNode>>;
 
   private:
-    const std::string name;
-    Decls parameters;
-    PTypeSharedPtr return_type;
-    mutable std::string prototype_string;
-    mutable bool prototype_string_is_valid = false;
-    std::unique_ptr<CompoundStatementNode> body;
+    std::string m_name;
+    DeclNodes m_parameters;
+    std::unique_ptr<PType> m_ret_type;
+    std::unique_ptr<CompoundStatementNode> m_body;
 
-    const SymbolTable *symbol_table;
+    mutable std::string m_prototype_string;
+    mutable bool m_prototype_string_is_valid = false;
+
+  public:
+    ~FunctionNode() = default;
+    FunctionNode(const uint32_t line, const uint32_t col,
+                 const char *const p_name, DeclNodes &p_decl_nodes,
+                 PType *const p_ret_type, CompoundStatementNode *const p_body)
+        : AstNode{line, col}, m_name(p_name),
+          m_parameters(std::move(p_decl_nodes)), m_ret_type(p_ret_type),
+          m_body(p_body) {}
+
+    static std::string getParametersTypeString(const DeclNodes &p_parameters);
+    static DeclNodes::size_type getParametersNum(const DeclNodes &p_parameters);
+
+    const std::string &getName() const { return m_name; }
+    const char *getNameCString() const { return m_name.c_str(); }
+    const char *getPrototypeCString() const;
+
+    const DeclNodes &getParameters() const { return m_parameters; }
+
+    const PType *getTypePtr() const { return m_ret_type.get(); }
+
+    void accept(AstNodeVisitor &p_visitor) override { p_visitor.visit(*this); }
+    void visitChildNodes(AstNodeVisitor &p_visitor) override;
+
+    void visitBodyChildNodes(AstNodeVisitor &p_visitor);
 };
 
 #endif

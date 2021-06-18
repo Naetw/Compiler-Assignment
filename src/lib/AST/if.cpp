@@ -1,20 +1,9 @@
 #include "AST/if.hpp"
-#include "visitor/AstNodeVisitor.hpp"
-
-IfNode::IfNode(const uint32_t line, const uint32_t col,
-               ExpressionNode *p_condition, CompoundStatementNode *p_body,
-               CompoundStatementNode *p_else)
-    : AstNode{line, col}, condition(p_condition), body(p_body),
-      else_body(p_else) {}
-
-const ExpressionNode *IfNode::getCondition() const { return condition.get(); }
-
-void IfNode::accept(AstNodeVisitor &p_visitor) { p_visitor.visit(*this); }
 
 void IfNode::visitChildNodes(AstNodeVisitor &p_visitor) {
-    condition->accept(p_visitor);
-    body->accept(p_visitor);
-    if (else_body) {
-        else_body->accept(p_visitor);
+    m_condition->accept(p_visitor);  
+    m_body->accept(p_visitor);
+    if (m_else_body) {
+        m_else_body->accept(p_visitor);
     }
 }

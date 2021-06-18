@@ -1,30 +1,34 @@
-#ifndef __AST_FUNCTION_INVOCATION_NODE_H
-#define __AST_FUNCTION_INVOCATION_NODE_H
+#ifndef AST_FUNCTION_INVOCATION_NODE_H
+#define AST_FUNCTION_INVOCATION_NODE_H
 
 #include "AST/expression.hpp"
+#include "visitor/AstNodeVisitor.hpp"
 
 #include <memory>
+#include <string>
 #include <vector>
 
-class FunctionInvocationNode : public ExpressionNode {
+class FunctionInvocationNode final : public ExpressionNode {
   public:
-    typedef std::vector<std::unique_ptr<ExpressionNode>> Exprs;
-
-    FunctionInvocationNode(const uint32_t line, const uint32_t col,
-                           const char *p_name, Exprs *p_arguments);
-    ~FunctionInvocationNode() = default;
-
-    const std::string &getName() const;
-    const char *getNameCString() const;
-
-    const Exprs &getArguments() const;
-
-    void accept(AstNodeVisitor &p_visitor) override;
-    void visitChildNodes(AstNodeVisitor &p_visitor) override;
+    using ExprNodes = std::vector<std::unique_ptr<ExpressionNode>>;
 
   private:
-    const std::string name;
-    Exprs arguments;
+    std::string m_name;
+    ExprNodes m_args;
+
+  public:
+    ~FunctionInvocationNode() = default;
+    FunctionInvocationNode(const uint32_t line, const uint32_t col,
+                           const char *const p_name, ExprNodes &p_args)
+        : ExpressionNode{line, col}, m_name(p_name), m_args(std::move(p_args)){}
+
+    const std::string &getName() const { return m_name; }
+    const char *getNameCString() const { return m_name.c_str(); }
+
+    const ExprNodes &getArguments() const { return m_args; }
+
+    void accept(AstNodeVisitor &p_visitor) override { p_visitor.visit(*this); }
+    void visitChildNodes(AstNodeVisitor &p_visitor) override;
 };
 
 #endif

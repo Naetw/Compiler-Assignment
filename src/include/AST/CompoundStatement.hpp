@@ -1,34 +1,32 @@
-#ifndef __AST_COMPOUND_STATEMENT_NODE_H
-#define __AST_COMPOUND_STATEMENT_NODE_H
+#ifndef AST_COMPOUND_STATEMENT_NODE_H
+#define AST_COMPOUND_STATEMENT_NODE_H
 
 #include "AST/ast.hpp"
 #include "AST/decl.hpp"
 
-#include <memory>
 #include <vector>
+#include <memory>
 
-class SymbolTable;
-
-class CompoundStatementNode : public AstNode {
+class CompoundStatementNode final : public AstNode {
   public:
-    typedef std::vector<std::unique_ptr<DeclNode>> Decls;
-    typedef std::vector<std::unique_ptr<AstNode>> Nodes;
-
-    CompoundStatementNode(const uint32_t line, const uint32_t col,
-                          Decls *p_var_decls, Nodes *p_statements);
-    ~CompoundStatementNode() = default;
-
-    void setSymbolTable(const SymbolTable *table);
-    const SymbolTable *getSymbolTable() const;
-
-    void accept(AstNodeVisitor &p_visitor) override;
-    void visitChildNodes(AstNodeVisitor &p_visitor) override;
+    using DeclNodes = std::vector<std::unique_ptr<DeclNode>>;
+    using StmtNodes = std::vector<std::unique_ptr<AstNode>>;
 
   private:
-    Decls var_decls;
-    Nodes statements;
+    DeclNodes m_decl_nodes;
+    StmtNodes m_stmt_nodes;
 
-    const SymbolTable *symbol_table;
+  public:
+    ~CompoundStatementNode() = default;
+    CompoundStatementNode(const uint32_t line, const uint32_t col,
+                          DeclNodes &p_decl_nodes, StmtNodes &p_stmt_nodes)
+        : AstNode{line, col}, m_decl_nodes(std::move(p_decl_nodes)),
+          m_stmt_nodes(std::move(p_stmt_nodes)){}
+
+    void accept(AstNodeVisitor &p_visitor) override {
+        p_visitor.visit(*this);
+    }
+    void visitChildNodes(AstNodeVisitor &p_visitor) override;
 };
 
 #endif

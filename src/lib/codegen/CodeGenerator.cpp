@@ -5,112 +5,55 @@
 #include <cstdarg>
 #include <cstdio>
 
-CodeGenerator::CodeGenerator(const char *in_file_name, const char *out_file_name, SymbolManager *symbol_manager) 
-    : in_file_name(in_file_name), symbol_manager(symbol_manager) {
-    this->out_fp = fopen(out_file_name, "w");
-    assert(this->out_fp != NULL && "fopen() fails");
+CodeGenerator::CodeGenerator(const std::string source_file_name,
+                             const std::string save_path,
+                             const SymbolManager *const p_symbol_manager)
+    : m_symbol_manager_ptr(p_symbol_manager), m_source_file_path(source_file_name) {
+    // FIXME: assume that the source file is always xxxx.p
+    std::string output_file_path(
+        save_path + "/" +
+        source_file_name.substr(0, source_file_name.rfind('.')) + ".S");
+    m_output_file.reset(fopen(output_file_path.c_str(), "w"));
+    assert(m_output_file.get() && "Failed to open output file");
 }
 
-CodeGenerator::~CodeGenerator() {
-    fclose(this->out_fp);
-}
-
-void CodeGenerator::dumpInstrs(const char *format, ...) {
+static void dumpInstructions(FILE *p_out_file, const char *format, ...) {
     va_list args;
     va_start(args, format);
-    vfprintf(this->out_fp, format, args);
+    vfprintf(p_out_file, format, args);
     va_end(args);
 }
 
-void CodeGenerator::visit(ProgramNode &p_program) {
-    // Reconstruct the hash table for looking up the symbol entry
-    // Hint: Use symbol_manager->lookup(symbol_name) to get the symbol entry.
-    symbol_manager->reconstructHashTableFromSymbolTable(p_program.getSymbolTable());
+void CodeGenerator::visit(ProgramNode &p_program) {}
 
-    // Generate RISC-V instructions for program header
-    dumpInstrs("%s%s%s%s", 
-        "   .file \"", this->in_file_name, "\"\n",
-        "   .option nopic\n"
-    );
+void CodeGenerator::visit(DeclNode &p_decl) {}
 
-    p_program.visitChildNodes(*this);
+void CodeGenerator::visit(VariableNode &p_variable) {}
 
-    // Remove the entries in the hash table
-    symbol_manager->removeSymbolsFromHashTable(p_program.getSymbolTable());
-}
+void CodeGenerator::visit(ConstantValueNode &p_constant_value) {}
 
-void CodeGenerator::visit(DeclNode &p_decl) {
-    
-}
+void CodeGenerator::visit(FunctionNode &p_function) {}
 
-void CodeGenerator::visit(VariableNode &p_variable) {
-    
-}
+void CodeGenerator::visit(CompoundStatementNode &p_compound_statement) {}
 
-void CodeGenerator::visit(ConstantValueNode &p_constant_value) {
-    
-}
+void CodeGenerator::visit(PrintNode &p_print) {}
 
-void CodeGenerator::visit(FunctionNode &p_function) {
-    // Reconstruct the hash table for looking up the symbol entry
-    symbol_manager->reconstructHashTableFromSymbolTable(p_function.getSymbolTable());
-    
-    // Remove the entries in the hash table
-    symbol_manager->removeSymbolsFromHashTable(p_function.getSymbolTable());
-}
+void CodeGenerator::visit(BinaryOperatorNode &p_bin_op) {}
 
-void CodeGenerator::visit(CompoundStatementNode &p_compound_statement) {
-    // Reconstruct the hash table for looking up the symbol entry
-    symbol_manager->reconstructHashTableFromSymbolTable(p_compound_statement.getSymbolTable());
+void CodeGenerator::visit(UnaryOperatorNode &p_un_op) {}
 
-    // Remove the entries in the hash table
-    symbol_manager->removeSymbolsFromHashTable(p_compound_statement.getSymbolTable());
-}
+void CodeGenerator::visit(FunctionInvocationNode &p_func_invocation) {}
 
-void CodeGenerator::visit(PrintNode &p_print) {
-    
-}
+void CodeGenerator::visit(VariableReferenceNode &p_variable_ref) {}
 
-void CodeGenerator::visit(BinaryOperatorNode &p_bin_op) {
-    
-}
+void CodeGenerator::visit(AssignmentNode &p_assignment) {}
 
-void CodeGenerator::visit(UnaryOperatorNode &p_un_op) {
-    
-}
+void CodeGenerator::visit(ReadNode &p_read) {}
 
-void CodeGenerator::visit(FunctionInvocationNode &p_func_invocation) {
-    
-}
+void CodeGenerator::visit(IfNode &p_if) {}
 
-void CodeGenerator::visit(VariableReferenceNode &p_variable_ref) {
-    
-}
+void CodeGenerator::visit(WhileNode &p_while) {}
 
-void CodeGenerator::visit(AssignmentNode &p_assignment) {
-    
-}
+void CodeGenerator::visit(ForNode &p_for) {}
 
-void CodeGenerator::visit(ReadNode &p_read) {
-    
-}
-
-void CodeGenerator::visit(IfNode &p_if) {
-    
-}
-
-void CodeGenerator::visit(WhileNode &p_while) {
-    
-}
-
-void CodeGenerator::visit(ForNode &p_for) {
-    // Reconstruct the hash table for looking up the symbol entry
-    symbol_manager->reconstructHashTableFromSymbolTable(p_for.getSymbolTable());
-
-    // Remove the entries in the hash table
-    symbol_manager->removeSymbolsFromHashTable(p_for.getSymbolTable());
-}
-
-void CodeGenerator::visit(ReturnNode &p_return) {
-    
-}
+void CodeGenerator::visit(ReturnNode &p_return) {}

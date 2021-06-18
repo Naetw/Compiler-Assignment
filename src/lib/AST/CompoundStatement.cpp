@@ -1,30 +1,12 @@
 #include "AST/CompoundStatement.hpp"
-#include "visitor/AstNodeVisitor.hpp"
 
-CompoundStatementNode::CompoundStatementNode(const uint32_t line,
-                                             const uint32_t col,
-                                             Decls *p_var_decls,
-                                             Nodes *p_statements)
-    : AstNode{line, col}, var_decls(std::move(*p_var_decls)),
-      statements(std::move(*p_statements)), symbol_table(nullptr) {}
-
-void CompoundStatementNode::setSymbolTable(const SymbolTable *table) {
-    symbol_table = table;
-}
-
-const SymbolTable *CompoundStatementNode::getSymbolTable() const {
-    return symbol_table;
-}
-
-void CompoundStatementNode::accept(AstNodeVisitor &p_visitor) {
-    p_visitor.visit(*this);
-}
+#include <algorithm>
 
 void CompoundStatementNode::visitChildNodes(AstNodeVisitor &p_visitor) {
-    for (auto &p_decl : var_decls) {
-        p_decl->accept(p_visitor);
-    }
-    for (auto &p_statement : statements) {
-        p_statement->accept(p_visitor);
-    }
+    auto visit_ast_node = [&](auto &ast_node) {
+        ast_node->accept(p_visitor);
+    };
+
+    for_each(m_decl_nodes.begin(), m_decl_nodes.end(), visit_ast_node);
+    for_each(m_stmt_nodes.begin(), m_stmt_nodes.end(), visit_ast_node);
 }

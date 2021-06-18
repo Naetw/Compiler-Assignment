@@ -9,35 +9,36 @@
     yylloc.first_column = col_num; \
     col_num += yyleng;
 
-#define LIST                strCat(yytext)
+#define LIST                concatenateString(yytext)
 #define TOKEN(t)            { LIST; if (opt_tok) printf("<%s>\n", #t); }
 #define TOKEN_CHAR(t)       { LIST; if (opt_tok) printf("<%c>\n", (t)); }
 #define TOKEN_STRING(t, s)  { LIST; if (opt_tok) printf("<%s: %s>\n", #t, (s)); }
 #define MAX_LINE_LENG       512
 #define MAX_ID_LENG         32
-#define MAX_LINE_NUM        201
+#define MAX_LINE_NUM        200
 
 // prevent undefined reference error in newer version of flex
 extern "C" int yylex(void);
 
 uint32_t line_num = 1;
 uint32_t col_num = 1;
-long line_positions[MAX_LINE_NUM] = { 0 };
+long line_positions[MAX_LINE_NUM + 1] = {0}; // +1 since we use 1-based
 char buffer[MAX_LINE_LENG];
 
-int32_t opt_dmp = 1;
-static int32_t opt_src = 1;
-static int32_t opt_tok = 1;
+static uint32_t opt_src = 1;
+static uint32_t opt_tok = 1;
+uint32_t opt_dmp = 1;
 static char string_literal[MAX_LINE_LENG];
 static char *buffer_ptr = buffer;
 
-static void strCat(const char *Text);
+static void concatenateString(const char *yytext_ptr);
 
 %}
 
 integer 0|[1-9][0-9]*
 float {integer}\.(0|[0-9]*[1-9])
 
+    /* exclusive start condition */
 %x CCOMMENT
 
 %%
@@ -55,49 +56,56 @@ float {integer}\.(0|[0-9]*[1-9])
 "-"   { TOKEN_CHAR('-'); return MINUS; }
 "*"   { TOKEN_CHAR('*'); return MULTIPLY; }
 "/"   { TOKEN_CHAR('/'); return DIVIDE; }
-"mod" { TOKEN(mod);      return MOD; }
-":="  { TOKEN(:=);       return ASSIGN; }
+"mod" { TOKEN(mod); return MOD; }
+":="  { TOKEN(:=); return ASSIGN; }
 "<"   { TOKEN_CHAR('<'); return LESS; }
-"<="  { TOKEN(<=);       return LESS_OR_EQUAL; }
-"<>"  { TOKEN(<>);       return NOT_EQUAL; }
-">="  { TOKEN(>=);       return GREATER_OR_EQUAL; }
+"<="  { TOKEN(<=); return LESS_OR_EQUAL; }
+"<>"  { TOKEN(<>); return NOT_EQUAL; }
+">="  { TOKEN(>=); return GREATER_OR_EQUAL; }
 ">"   { TOKEN_CHAR('>'); return GREATER; }
 "="   { TOKEN_CHAR('='); return EQUAL; }
-"and" { TOKEN(and);      return AND; }
-"or"  { TOKEN(or);       return OR; }
-"not" { TOKEN(not);      return NOT; }
+"and" { TOKEN(and); return AND; }
+"or"  { TOKEN(or); return OR; }
+"not" { TOKEN(not); return NOT; }
 
-    /* Keyword */
-"array"   { TOKEN(KWarray);   return ARRAY; }
-"begin"   { TOKEN(KWbegin);   return BEGIN_; }
+    /* Reserved Word */
+"var"     { TOKEN(KWvar); return VAR; }
+"array"   { TOKEN(KWarray); return ARRAY; }
+"of"      { TOKEN(KWof); return OF; }
 "boolean" { TOKEN(KWboolean); return BOOLEAN; }
-"def"     { TOKEN(KWdef);     return DEF; }
-"do"      { TOKEN(KWdo);      return DO; }
-"else"    { TOKEN(KWelse);    return ELSE; }
-"end"     { TOKEN(KWend);     return END; }
-"false"   {
-    TOKEN(KWfalse);
-    yylval.boolean = false;
-    return FALSE;
-}
-"for"     { TOKEN(KWfor);     return FOR; }
 "integer" { TOKEN(KWinteger); return INTEGER; }
-"if"      { TOKEN(KWif);      return IF; }
-"of"      { TOKEN(KWof);      return OF; }
-"print"   { TOKEN(KWprint);   return PRINT; }
-"read"    { TOKEN(KWread);    return READ; }
-"real"    { TOKEN(KWreal);    return REAL; }
-"string"  { TOKEN(KWstring);  return STRING; }
-"then"    { TOKEN(KWthen);    return THEN; }
-"to"      { TOKEN(KWto);      return TO; }
+"real"    { TOKEN(KWreal); return REAL; }
+"string"  { TOKEN(KWstring); return STRING; }
+
 "true"    {
     TOKEN(KWtrue);
     yylval.boolean = true;
     return TRUE;
 }
-"return"  { TOKEN(KWreturn);  return RETURN; }
-"var"     { TOKEN(KWvar);     return VAR; }
-"while"   { TOKEN(KWwhile);   return WHILE; }
+"false"   {
+    TOKEN(KWfalse);
+    yylval.boolean = false;
+    return FALSE;
+}
+
+"def"     { TOKEN(KWdef); return DEF; }
+"return"  { TOKEN(KWreturn); return RETURN; }
+
+"begin"   { TOKEN(KWbegin); return BEGIN_; }
+"end"     { TOKEN(KWend); return END; }
+
+"while"   { TOKEN(KWwhile); return WHILE; }
+"do"      { TOKEN(KWdo); return DO; }
+
+"if"      { TOKEN(KWif); return IF; }
+"then"    { TOKEN(KWthen); return THEN; }
+"else"    { TOKEN(KWelse); return ELSE; }
+
+"for"     { TOKEN(KWfor); return FOR; }
+"to"      { TOKEN(KWto); return TO; }
+
+"print"   { TOKEN(KWprint); return PRINT; }
+"read"    { TOKEN(KWread); return READ; }
 
     /* Identifier */
 [a-zA-Z][a-zA-Z0-9]* {
@@ -134,26 +142,31 @@ float {integer}\.(0|[0-9]*[1-9])
 
     /* String */
 \"([^"\n]|\"\")*\" {
-    char *yyt_ptr = yytext;
+    char *yyt_ptr = yytext + 1;  // +1 for skipping the first double quote "
     char *str_ptr = string_literal;
 
-    /* Condition guard of the end of string literal
-       Check only when *yyt_ptr == '"' */
-    while (*(yyt_ptr + 1) != '\0') {
-        ++yyt_ptr;
-
-        /* Handle the situation of double quotes */
-        if (*yyt_ptr == '"' && *(yyt_ptr + 1) != '\0')
-            *str_ptr++ = *yyt_ptr++;
-
-        while (*yyt_ptr != '"')
-            *str_ptr++ = *yyt_ptr++;
+    while (*yyt_ptr) {
+        if (*yyt_ptr == '"') {
+            // Handle the situation of two double quotes "" in string literal
+            if (*(yyt_ptr + 1) == '"') {
+                *str_ptr = *yyt_ptr;
+                ++str_ptr;
+                yyt_ptr += 2; // move to the next character of ""
+            } else {
+                ++yyt_ptr;
+            }
+        } else {  // normal character
+            *str_ptr = *yyt_ptr;
+            ++str_ptr;
+            ++yyt_ptr;
+        }
     }
     *str_ptr = '\0';
     TOKEN_STRING(string, string_literal);
     yylval.string = strdup(string_literal);
     return STRING_LITERAL;
 }
+
     /* Whitespace */
 [ \t]+ { LIST; }
 
@@ -189,14 +202,13 @@ float {integer}\.(0|[0-9]*[1-9])
     }
     line_positions[line_num + 1] = line_positions[line_num] +
                                    (buffer_ptr - buffer + 1);
-
     ++line_num;
     col_num = 1;
     buffer[0] = '\0';
     buffer_ptr = buffer;
 }
 
-    /* Catch the character which is not accepted by rules above */
+    /* Catch the character which is not accepted by all rules above */
 . {
     printf("Error at line %d: bad character \"%s\"\n", line_num, yytext);
     exit(-1);
@@ -204,9 +216,11 @@ float {integer}\.(0|[0-9]*[1-9])
 
 %%
 
-static void strCat(const char *Text) {
-    while (*Text) {
-        *buffer_ptr++ = *Text++;
+static void concatenateString(const char *yytext_ptr) {
+    while (*yytext_ptr) {
+        *buffer_ptr = *yytext_ptr;
+        ++buffer_ptr;
+        ++yytext_ptr;
     }
     *buffer_ptr = '\0';
 }

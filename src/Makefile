@@ -1,7 +1,7 @@
 CC = g++
 LEX = flex
 YACC = bison
-CFLAGS = -Wall -std=gnu++11 -g
+CFLAGS = -Wall -std=gnu++14 -g
 LIBS = -lfl -ly
 INCLUDE = -Iinclude
 
@@ -23,7 +23,7 @@ CODEGEN := $(shell find $(CODEGENDIR) -name '*.cpp')
 SRC := $(AST) \
        $(VISITOR) \
        $(SEMANTIC) \
-        $(CODEGEN)
+       $(CODEGEN)
 
 EXEC = compiler
 OBJS = $(PARSER:=.cpp) \
@@ -50,6 +50,6 @@ $(EXEC): $(OBJS)
 	$(CC) -o $@ $^ $(LIBS) $(INCLUDE)
 
 clean:
-	$(RM) $(DEPS) $(SCANNER:=.cpp) $(PARSER:=.cpp) $(PARSER:=.h) $(PARSER:=.output) $(OBJS) $(EXEC)
+	$(RM) $(DEPS) $(SCANNER:=.cpp) $(PARSER:=.cpp) $(PARSER:=.h) $(OBJS) $(EXEC)
 
 -include $(DEPS)

@@ -8,11 +8,22 @@
 CodeGenerator::CodeGenerator(const std::string source_file_name,
                              const std::string save_path,
                              const SymbolManager *const p_symbol_manager)
-    : m_symbol_manager_ptr(p_symbol_manager), m_source_file_path(source_file_name) {
+    : m_symbol_manager_ptr(p_symbol_manager),
+      m_source_file_path(source_file_name) {
     // FIXME: assume that the source file is always xxxx.p
+    const std::string &real_path =
+        (save_path == "") ? std::string{"."} : save_path;
+    auto slash_pos = source_file_name.rfind("/");
+    auto dot_pos = source_file_name.rfind(".");
+
+    if (slash_pos != std::string::npos) {
+        ++slash_pos;
+    } else {
+        slash_pos = 0;
+    }
     std::string output_file_path(
-        save_path + "/" +
-        source_file_name.substr(0, source_file_name.rfind('.')) + ".S");
+        real_path + "/" +
+        source_file_name.substr(slash_pos, dot_pos - slash_pos) + ".S");
     m_output_file.reset(fopen(output_file_path.c_str(), "w"));
     assert(m_output_file.get() && "Failed to open output file");
 }

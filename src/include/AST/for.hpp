@@ -7,12 +7,16 @@
 #include "AST/expression.hpp"
 #include "AST/CompoundStatement.hpp"
 
+class SymbolTable;
+
 class ForNode final : public AstNode {
   private:
     std::unique_ptr<DeclNode> m_loop_var_decl;
     std::unique_ptr<AssignmentNode> m_init_stmt;
     std::unique_ptr<ExpressionNode> m_end_condition;
     std::unique_ptr<CompoundStatementNode> m_body;
+
+    const SymbolTable *m_symbol_table_ptr = nullptr;
 
   public:
     ~ForNode() = default;
@@ -25,6 +29,11 @@ class ForNode final : public AstNode {
 
     const ConstantValueNode &getLowerBound() const;
     const ConstantValueNode &getUpperBound() const;
+
+    const SymbolTable *getSymbolTable() const { return m_symbol_table_ptr; }
+    void setSymbolTable(const SymbolTable *p_symbol_table) {
+        m_symbol_table_ptr = p_symbol_table;
+    }
 
     void accept(AstNodeVisitor &p_visitor) override { p_visitor.visit(*this); }
     void visitChildNodes(AstNodeVisitor &p_visitor) override;

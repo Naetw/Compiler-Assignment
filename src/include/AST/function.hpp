@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+class SymbolTable;
+
 class FunctionNode final : public AstNode {
   public:
     using DeclNodes = std::vector<std::unique_ptr<DeclNode>>;
@@ -21,6 +23,8 @@ class FunctionNode final : public AstNode {
 
     mutable std::string m_prototype_string;
     mutable bool m_prototype_string_is_valid = false;
+
+    const SymbolTable *m_symbol_table_ptr = nullptr;
 
   public:
     ~FunctionNode() = default;
@@ -41,6 +45,11 @@ class FunctionNode final : public AstNode {
     const DeclNodes &getParameters() const { return m_parameters; }
 
     const PType *getTypePtr() const { return m_ret_type.get(); }
+
+    const SymbolTable *getSymbolTable() const { return m_symbol_table_ptr; }
+    void setSymbolTable(const SymbolTable *p_symbol_table) {
+        m_symbol_table_ptr = p_symbol_table;
+    }
 
     void accept(AstNodeVisitor &p_visitor) override { p_visitor.visit(*this); }
     void visitChildNodes(AstNodeVisitor &p_visitor) override;

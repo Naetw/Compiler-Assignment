@@ -24,11 +24,7 @@ void SemanticAnalyzer::visit(ProgramNode &p_program) {
 
     p_program.visitChildNodes(*this);
 
-    /*
-     * TODO:
-     *
-     * 4. Perform semantic analyses of this node.
-     */
+    p_program.setSymbolTable(m_symbol_manager.getCurrentTable());
 
     m_returned_type_stack.pop();
     m_context_stack.pop();
@@ -130,6 +126,8 @@ void SemanticAnalyzer::visit(FunctionNode &p_function) {
     p_function.visitBodyChildNodes(*this);
     m_context_stack.pop();
 
+    p_function.setSymbolTable(m_symbol_manager.getCurrentTable());
+
     m_returned_type_stack.pop();
     m_context_stack.pop();
     m_symbol_manager.popScope();
@@ -140,6 +138,8 @@ void SemanticAnalyzer::visit(CompoundStatementNode &p_compound_statement) {
     m_context_stack.push(SemanticContext::kLocal);
 
     p_compound_statement.visitChildNodes(*this);
+
+    p_compound_statement.setSymbolTable(m_symbol_manager.getCurrentTable());
 
     m_context_stack.pop();
     m_symbol_manager.popScope();
@@ -691,6 +691,8 @@ void SemanticAnalyzer::visit(ForNode &p_for) {
     if (!validateForLoopBound(p_for)) {
         m_has_error = true;
     }
+
+    p_for.setSymbolTable(m_symbol_manager.getCurrentTable());
 
     m_context_stack.pop();
     m_symbol_manager.popScope();

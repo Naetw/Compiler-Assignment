@@ -119,7 +119,38 @@ static void dumpSymbolTable(const SymbolTable *const table) {
                 "----------------------------------------------------\n");
 }
 
-void SymbolManager::removeSymbolsFromHashTable(const SymbolTable *p_table) {
+void SymbolManager::reconstructHashTableFromSymbolTable(
+    const SymbolTable *const p_table) const {
+    if (!p_table) {
+        return;
+    }
+
+    auto construct_entry_on_hash_map = [&](const auto &p_entry_ptr) {
+        auto existence_pair =
+            checkExistence(p_entry_ptr->getName(), p_entry_ptr->getLevel());
+
+        // No need to care existence_pair.first since it's for semantic check.
+        // In the reconstruction, the whole symbol tables have been constructed
+        // before.
+
+        if (existence_pair.second) {
+            m_hidden_entries[p_entry_ptr->getName()].push(
+                existence_pair.second);
+            m_hash_entries[p_entry_ptr->getName()] = p_entry_ptr.get();
+        } else {
+            m_hash_entries.emplace(
+                std::piecewise_construct,
+                std::forward_as_tuple(p_entry_ptr->getName()),
+                std::forward_as_tuple(p_entry_ptr.get()));
+        }
+    };
+
+    for_each(p_table->getEntries().begin(), p_table->getEntries().end(),
+             construct_entry_on_hash_map);
+}
+
+void SymbolManager::removeSymbolsFromHashTable(
+    const SymbolTable *const p_table) const {
     if (!p_table) {
         return;
     }
@@ -174,13 +205,14 @@ void SymbolManager::popScope() {
 }
 
 std::pair<bool, SymbolEntry *>
-SymbolManager::checkExistence(const std::string &p_name) const {
+SymbolManager::checkExistence(const std::string &p_name,
+                              const size_t current_level) const {
     auto search_result = m_hash_entries.find(p_name);
 
     if (search_result != m_hash_entries.end()) {
         SymbolEntry *old_entry = search_result->second;
 
-        if (old_entry->getLevel() == m_current_level ||
+        if (old_entry->getLevel() == current_level ||
             old_entry->getKind() == SymbolEntry::KindEnum::kLoopVarKind) {
             return std::make_pair(true, old_entry);
         } else {
@@ -196,7 +228,8 @@ SymbolEntry *
 genericAddSymbol(SymbolManager &p_manager, const std::string &p_name,
                  const SymbolEntry::KindEnum kind, const PType *const p_type,
                  const AttributeType *const p_attribute) {
-    auto existence_pair = p_manager.checkExistence(p_name);
+    auto existence_pair =
+        p_manager.checkExistence(p_name, p_manager.getCurrentLevel());
 
     if (existence_pair.first) {
         return nullptr;

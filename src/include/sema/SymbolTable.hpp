@@ -118,8 +118,8 @@ class SymbolManager {
     // hold tables for other visitors to use
     Tables m_popped_tables;
 
-    NameEntryMap m_hash_entries;
-    std::map<std::string, std::stack<SymbolEntry *>> m_hidden_entries;
+    mutable NameEntryMap m_hash_entries;
+    mutable std::map<std::string, std::stack<SymbolEntry *>> m_hidden_entries;
 
     SymbolTable *m_current_table = nullptr;
     size_t m_current_level = 0;
@@ -160,11 +160,16 @@ class SymbolManager {
 
     const SymbolEntry *lookup(const std::string &p_name) const;
 
+    const SymbolTable *getCurrentTable() const { return m_current_table; }
+    size_t getCurrentLevel() const { return m_current_level; }
+
+    void
+    reconstructHashTableFromSymbolTable(const SymbolTable *const p_table) const;
+    void removeSymbolsFromHashTable(const SymbolTable *const p_table) const;
+
   private:
     std::pair<bool, SymbolEntry *>
-    checkExistence(const std::string &p_name) const;
-
-    void removeSymbolsFromHashTable(const SymbolTable *p_table);
+    checkExistence(const std::string &p_name, const size_t current_level) const;
 };
 
 #endif

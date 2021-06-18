@@ -1,6 +1,7 @@
 #include "codegen/CodeGenerator.hpp"
 #include "visitor/AstNodeInclude.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdarg>
 #include <cstdio>
@@ -35,7 +36,21 @@ static void dumpInstructions(FILE *p_out_file, const char *format, ...) {
     va_end(args);
 }
 
-void CodeGenerator::visit(ProgramNode &p_program) {}
+void CodeGenerator::visit(ProgramNode &p_program) {
+    m_symbol_manager_ptr->reconstructHashTableFromSymbolTable(
+        p_program.getSymbolTable());
+
+    auto visit_ast_node = [&](auto &ast_node) { ast_node->accept(*this); };
+    for_each(p_program.getDeclNodes().begin(), p_program.getDeclNodes().end(),
+             visit_ast_node);
+    for_each(p_program.getFuncNodes().begin(), p_program.getFuncNodes().end(),
+             visit_ast_node);
+
+    const_cast<CompoundStatementNode &>(p_program.getBody()).accept(*this);
+
+    m_symbol_manager_ptr->removeSymbolsFromHashTable(
+        p_program.getSymbolTable());
+}
 
 void CodeGenerator::visit(DeclNode &p_decl) {}
 
@@ -43,9 +58,25 @@ void CodeGenerator::visit(VariableNode &p_variable) {}
 
 void CodeGenerator::visit(ConstantValueNode &p_constant_value) {}
 
-void CodeGenerator::visit(FunctionNode &p_function) {}
+void CodeGenerator::visit(FunctionNode &p_function) {
+    m_symbol_manager_ptr->reconstructHashTableFromSymbolTable(
+        p_function.getSymbolTable());
 
-void CodeGenerator::visit(CompoundStatementNode &p_compound_statement) {}
+    p_function.visitChildNodes(*this);
+
+    m_symbol_manager_ptr->removeSymbolsFromHashTable(
+        p_function.getSymbolTable());
+}
+
+void CodeGenerator::visit(CompoundStatementNode &p_compound_statement) {
+    m_symbol_manager_ptr->reconstructHashTableFromSymbolTable(
+        p_compound_statement.getSymbolTable());
+
+    p_compound_statement.visitChildNodes(*this);
+
+    m_symbol_manager_ptr->removeSymbolsFromHashTable(
+        p_compound_statement.getSymbolTable());
+}
 
 void CodeGenerator::visit(PrintNode &p_print) {}
 
@@ -65,6 +96,14 @@ void CodeGenerator::visit(IfNode &p_if) {}
 
 void CodeGenerator::visit(WhileNode &p_while) {}
 
-void CodeGenerator::visit(ForNode &p_for) {}
+void CodeGenerator::visit(ForNode &p_for) {
+    m_symbol_manager_ptr->reconstructHashTableFromSymbolTable(
+        p_for.getSymbolTable());
+
+    p_for.visitChildNodes(*this);
+
+    m_symbol_manager_ptr->removeSymbolsFromHashTable(
+        p_for.getSymbolTable());
+}
 
 void CodeGenerator::visit(ReturnNode &p_return) {}

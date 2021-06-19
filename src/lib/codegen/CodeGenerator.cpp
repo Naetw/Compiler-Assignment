@@ -1,4 +1,5 @@
 #include "codegen/CodeGenerator.hpp"
+#include "AST/operator.hpp"
 #include "visitor/AstNodeInclude.hpp"
 
 #include <algorithm>
@@ -179,9 +180,55 @@ void CodeGenerator::visit(PrintNode &p_print) {
                                           "    jal ra, printInt\n");
 }
 
-void CodeGenerator::visit(BinaryOperatorNode &p_bin_op) {}
+void CodeGenerator::visit(BinaryOperatorNode &p_bin_op) {
+    p_bin_op.visitChildNodes(*this);
 
-void CodeGenerator::visit(UnaryOperatorNode &p_un_op) {}
+    emitInstructions(m_output_file.get(), "    lw t0, 0(sp)\n"
+                                          "    addi sp, sp, 4\n"
+                                          "    lw t1, 0(sp)\n"
+                                          "    addi sp, sp, 4\n");
+
+    switch (p_bin_op.getOp()) {
+    case Operator::kMultiplyOp:
+        emitInstructions(m_output_file.get(), "    mul t0, t1, t0\n");
+        break;
+    case Operator::kDivideOp:
+        emitInstructions(m_output_file.get(), "    div t0, t1, t0\n");
+        break;
+    case Operator::kModOp:
+        emitInstructions(m_output_file.get(), "    rem t0, t1, t0\n");
+        break;
+    case Operator::kPlusOp:
+        emitInstructions(m_output_file.get(), "    add t0, t1, t0\n");
+        break;
+    case Operator::kMinusOp:
+        emitInstructions(m_output_file.get(), "    sub t0, t1, t0\n");
+        break;
+    default:
+        assert(false && "unsupported binary operator");
+        return;
+    }
+    emitInstructions(m_output_file.get(), "    addi sp, sp, -4\n"
+                                          "    sw t0, 0(sp)\n");
+}
+
+void CodeGenerator::visit(UnaryOperatorNode &p_un_op) {
+    p_un_op.visitChildNodes(*this);
+
+    emitInstructions(m_output_file.get(), "    lw t0, 0(sp)\n"
+                                          "    addi sp, sp, 4\n");
+
+    switch (p_un_op.getOp()) {
+    case Operator::kNegOp:
+        emitInstructions(m_output_file.get(), "    sub t0, zero, t0\n");
+        break;
+    default:
+        assert(false && "unsupported unary operator");
+        return;
+    }
+    emitInstructions(m_output_file.get(), "    addi sp, sp, -4\n"
+                                          "    sw t0, 0(sp)\n");
+}
 
 void CodeGenerator::visit(FunctionInvocationNode &p_func_invocation) {}
 

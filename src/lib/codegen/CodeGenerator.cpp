@@ -29,24 +29,57 @@ CodeGenerator::CodeGenerator(const std::string source_file_name,
     assert(m_output_file.get() && "Failed to open output file");
 }
 
-static void dumpInstructions(FILE *p_out_file, const char *format, ...) {
+static void emitInstructions(FILE *p_out_file, const char *format, ...) {
     va_list args;
     va_start(args, format);
     vfprintf(p_out_file, format, args);
     va_end(args);
 }
 
+// clang-format off
+static constexpr const char*const kFixedFunctionPrologue =
+    "    .align 2\n"
+    "    .globl %s\n"
+    "    .type %s, @function\n"
+    "%s:\n"
+    "    addi sp, sp, -128\n"
+    "    sw ra, 124(sp)\n"
+    "    sw s0, 120(sp)\n"
+    "    addi s0, sp, 128\n";
+
+static constexpr const char*const kFixedFunctionEpilogue =
+    "    lw ra, 124(sp)\n"
+    "    lw s0, 120(sp)\n"
+    "    addi sp, sp, 128\n"
+    "    jr ra\n"
+    "    .size %s, .-%s";
+// clang-format on
+
 void CodeGenerator::visit(ProgramNode &p_program) {
+    // clang-format off
+    constexpr const char*const riscv_assembly_file_prologue =
+        "    .file \"%s\"\n"
+        "    .option nopic\n"
+        ".section    .text\n";
+    // clang-format on
+    emitInstructions(m_output_file.get(), riscv_assembly_file_prologue,
+                     m_source_file_path.c_str());
+
     m_symbol_manager_ptr->reconstructHashTableFromSymbolTable(
         p_program.getSymbolTable());
 
     auto visit_ast_node = [&](auto &ast_node) { ast_node->accept(*this); };
     for_each(p_program.getDeclNodes().begin(), p_program.getDeclNodes().end(),
              visit_ast_node);
+    emitInstructions(m_output_file.get(), ".section    .text\n");
     for_each(p_program.getFuncNodes().begin(), p_program.getFuncNodes().end(),
              visit_ast_node);
 
+    emitInstructions(m_output_file.get(), kFixedFunctionPrologue, "main",
+                     "main", "main");
     const_cast<CompoundStatementNode &>(p_program.getBody()).accept(*this);
+    emitInstructions(m_output_file.get(), kFixedFunctionEpilogue, "main",
+                     "main");
 
     m_symbol_manager_ptr->removeSymbolsFromHashTable(
         p_program.getSymbolTable());
@@ -102,8 +135,7 @@ void CodeGenerator::visit(ForNode &p_for) {
 
     p_for.visitChildNodes(*this);
 
-    m_symbol_manager_ptr->removeSymbolsFromHashTable(
-        p_for.getSymbolTable());
+    m_symbol_manager_ptr->removeSymbolsFromHashTable(p_for.getSymbolTable());
 }
 
 void CodeGenerator::visit(ReturnNode &p_return) {}

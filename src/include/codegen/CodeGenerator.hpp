@@ -4,13 +4,27 @@
 #include "sema/SymbolTable.hpp"
 #include "visitor/AstNodeVisitor.hpp"
 
+#include <map>
 #include <memory>
 
 class CodeGenerator final : public AstNodeVisitor {
   private:
+    enum class CodegenContext : uint8_t {
+        kGlobal,
+        kLocal
+    };
+
+  private:
     const SymbolManager *m_symbol_manager_ptr;
     std::string m_source_file_path;
     std::unique_ptr<FILE> m_output_file;
+
+    std::stack<CodegenContext> m_context_stack;
+
+    size_t m_local_var_offset = 0;
+    std::map<const SymbolEntry *, size_t> m_local_var_offset_map;
+
+    bool m_ref_to_value = false;
 
   public:
     ~CodeGenerator() = default;
@@ -35,6 +49,14 @@ class CodeGenerator final : public AstNodeVisitor {
     void visit(WhileNode &p_while) override;
     void visit(ForNode &p_for) override;
     void visit(ReturnNode &p_return) override;
+
+  private:
+    static bool isInGlobal(const std::stack<CodegenContext> &p_context_stack) {
+        return p_context_stack.top() == CodegenContext::kGlobal;
+    }
+    static bool isInLocal(const std::stack<CodegenContext> &p_context_stack) {
+        return p_context_stack.top() == CodegenContext::kLocal;
+    }
 };
 
 #endif

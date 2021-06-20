@@ -65,6 +65,8 @@ class CodeGenerator final : public AstNodeVisitor {
     static bool isInLocal(const std::stack<CodegenContext> &p_context_stack) {
         return p_context_stack.top() == CodegenContext::kLocal;
     }
+    void
+    storeArgumentsToParameters(const FunctionNode::DeclNodes &p_parameters);
 };
 
 #endif

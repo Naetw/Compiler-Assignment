@@ -149,12 +149,57 @@ void CodeGenerator::visit(ConstantValueNode &p_constant_value) {
                      p_constant_value.getConstantPtr()->integer());
 }
 
+void CodeGenerator::storeArgumentsToParameters(
+    const FunctionNode::DeclNodes &p_parameters) {
+    constexpr size_t kNumOfArgumentRegister = 8;
+    size_t index = 0;
+
+    for (const auto &parameter : p_parameters) {
+        for (const auto &var_node_ptr : parameter->getVariables()) {
+            const auto *entry_ptr =
+                m_symbol_manager_ptr->lookup(var_node_ptr->getName());
+            auto search = m_local_var_offset_map.find(entry_ptr);
+            assert(search != m_local_var_offset_map.end() &&
+                   "Should have been defined before use");
+
+            if (index < kNumOfArgumentRegister) {
+                emitInstructions(m_output_file.get(), "    sw a%u, -%u(s0)\n",
+                                 index, search->second);
+            } else {
+                emitInstructions(m_output_file.get(),
+                                 "    lw t0, %u(s0)\n"
+                                 "    sw t0, -%u(s0)\n",
+                                 4 * (index - kNumOfArgumentRegister),
+                                 search->second);
+            }
+            ++index;
+        }
+    }
+}
+
 void CodeGenerator::visit(FunctionNode &p_function) {
     m_symbol_manager_ptr->reconstructHashTableFromSymbolTable(
         p_function.getSymbolTable());
+    m_context_stack.push(CodegenContext::kLocal);
 
-    p_function.visitChildNodes(*this);
+    emitInstructions(m_output_file.get(), kFixedFunctionPrologue,
+                     p_function.getNameCString(), p_function.getNameCString(),
+                     p_function.getNameCString());
 
+    m_local_var_offset = kLocalVariableStartOffset;
+
+    auto visit_ast_node = [&](auto &ast_node) { ast_node->accept(*this); };
+    for_each(p_function.getParameters().begin(),
+             p_function.getParameters().end(), visit_ast_node);
+
+    storeArgumentsToParameters(p_function.getParameters());
+
+    p_function.visitBodyChildNodes(*this);
+
+    emitInstructions(m_output_file.get(), kFixedFunctionEpilogue,
+                     p_function.getNameCString(), p_function.getNameCString());
+
+    m_context_stack.pop();
     m_symbol_manager_ptr->removeSymbolsFromHashTable(
         p_function.getSymbolTable());
 }
@@ -234,7 +279,49 @@ void CodeGenerator::visit(UnaryOperatorNode &p_un_op) {
                                           "    sw t0, 0(sp)\n");
 }
 
-void CodeGenerator::visit(FunctionInvocationNode &p_func_invocation) {}
+void CodeGenerator::visit(FunctionInvocationNode &p_func_invocation) {
+    constexpr size_t kNumOfArgumentRegister = 8;
+    const auto &arguments = p_func_invocation.getArguments();
+
+    m_ref_to_value = true;
+    auto visit_ast_node = [&](auto &ast_node) { ast_node->accept(*this); };
+    if (arguments.size() > kNumOfArgumentRegister) {
+        // [0, kNumOfArgumentRegister)
+        for_each(arguments.begin(),
+                 std::next(arguments.begin(), kNumOfArgumentRegister),
+                 visit_ast_node);
+    } else {
+        for_each(arguments.begin(), arguments.end(), visit_ast_node);
+    }
+
+    // RISC-V has a0-a7 for passing arguments
+    size_t num_of_a_reg = std::min(kNumOfArgumentRegister, arguments.size());
+    for (size_t i = 0; i < num_of_a_reg; ++i) {
+        emitInstructions(m_output_file.get(),
+                         "    lw a%u, 0(sp)\n"
+                         "    addi sp, sp, 4\n",
+                         num_of_a_reg - i - 1);
+    }
+
+    // [kNumOfArgumentRegister, end)
+    if (arguments.size() > kNumOfArgumentRegister) {
+        for_each(std::next(arguments.begin(), kNumOfArgumentRegister),
+                 arguments.end(), visit_ast_node);
+    }
+
+    emitInstructions(m_output_file.get(), "    jal ra, %s\n",
+                     p_func_invocation.getNameCString());
+
+    // restore the stack if necessary
+    if (arguments.size() > kNumOfArgumentRegister) {
+        emitInstructions(m_output_file.get(), "    addi sp, sp, %u\n",
+                         4 * (arguments.size() - kNumOfArgumentRegister));
+    }
+
+    emitInstructions(m_output_file.get(), "    mv t0, a0\n"
+                                          "    addi sp, sp, -4\n"
+                                          "    sw t0, 0(sp)\n");
+}
 
 void CodeGenerator::visit(VariableReferenceNode &p_variable_ref) {
     // Haven't supported array reference
@@ -290,4 +377,11 @@ void CodeGenerator::visit(ForNode &p_for) {
     m_symbol_manager_ptr->removeSymbolsFromHashTable(p_for.getSymbolTable());
 }
 
-void CodeGenerator::visit(ReturnNode &p_return) {}
+void CodeGenerator::visit(ReturnNode &p_return) {
+    m_ref_to_value = true;
+    p_return.visitChildNodes(*this);
+
+    emitInstructions(m_output_file.get(), "    lw t0, 0(sp)\n"
+                                          "    addi sp, sp, 4\n"
+                                          "    mv a0, t0\n");
+}

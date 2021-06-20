@@ -253,6 +253,42 @@ void CodeGenerator::visit(BinaryOperatorNode &p_bin_op) {
     case Operator::kMinusOp:
         emitInstructions(m_output_file.get(), "    sub t0, t1, t0\n");
         break;
+    case Operator::kLessOp:
+        emitInstructions(
+            m_output_file.get(),
+            "    blt t1, t0, L%u\n"
+            "    j L%u\n", m_label_sequence, m_label_sequence + 1);
+        return;
+    case Operator::kLessOrEqualOp:
+        emitInstructions(
+            m_output_file.get(),
+            "    ble t1, t0, L%u\n"
+            "    j L%u\n", m_label_sequence, m_label_sequence + 1);
+        return;
+    case Operator::kGreaterOp:
+        emitInstructions(
+            m_output_file.get(),
+            "    bgt t1, t0, L%u\n"
+            "    j L%u\n", m_label_sequence, m_label_sequence + 1);
+        return;
+    case Operator::kGreaterOrEqualOp:
+        emitInstructions(
+            m_output_file.get(),
+            "    bge t1, t0, L%u\n"
+            "    j L%u\n", m_label_sequence, m_label_sequence + 1);
+        return;
+    case Operator::kEqualOp:
+        emitInstructions(
+            m_output_file.get(),
+            "    beq t1, t0, L%u\n"
+            "    j L%u\n", m_label_sequence, m_label_sequence + 1);
+        return;
+    case Operator::kNotEqualOp:
+        emitInstructions(
+            m_output_file.get(),
+            "    bne t1, t0, L%u\n"
+            "    j L%u\n", m_label_sequence, m_label_sequence + 1);
+        return;
     default:
         assert(false && "unsupported binary operator");
         return;
@@ -364,7 +400,24 @@ void CodeGenerator::visit(AssignmentNode &p_assignment) {
 
 void CodeGenerator::visit(ReadNode &p_read) {}
 
-void CodeGenerator::visit(IfNode &p_if) {}
+void CodeGenerator::visit(IfNode &p_if) {
+    const_cast<ExpressionNode &>(p_if.getCondition()).accept(*this);
+
+    emitInstructions(m_output_file.get(), "L%u:\n", m_label_sequence);
+    ++m_label_sequence;
+    const_cast<CompoundStatementNode &>(p_if.getIfBody()).accept(*this);
+    const auto *else_body_ptr = p_if.getElseBodyPtr();
+    if (else_body_ptr) {
+        ++m_label_sequence;
+        emitInstructions(
+            m_output_file.get(),
+            "    j L%u\n"
+            "L%u:\n", m_label_sequence, m_label_sequence - 1);
+        const_cast<CompoundStatementNode *>(else_body_ptr)->accept(*this);
+    }
+    emitInstructions(m_output_file.get(), "L%u:\n", m_label_sequence);
+    ++m_label_sequence;
+}
 
 void CodeGenerator::visit(WhileNode &p_while) {}
 

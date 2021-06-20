@@ -34,6 +34,8 @@ class CodeGenerator final : public AstNodeVisitor {
 
     bool m_ref_to_value = false;
 
+    size_t m_label_sequence = 1;
+
   public:
     ~CodeGenerator() = default;
     CodeGenerator(const std::string source_file_name,

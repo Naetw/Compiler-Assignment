@@ -42,7 +42,6 @@ static void emitInstructions(FILE *p_out_file, const char *format, ...) {
 
 // clang-format off
 static constexpr const char*const kFixedFunctionPrologue =
-    "    .align 2\n"
     "    .globl %s\n"
     "    .type %s, @function\n"
     "%s:\n"
@@ -56,7 +55,7 @@ static constexpr const char*const kFixedFunctionEpilogue =
     "    lw s0, 120(sp)\n"
     "    addi sp, sp, 128\n"
     "    jr ra\n"
-    "    .size %s, .-%s";
+    "    .size %s, .-%s\n";
 // clang-format on
 
 void CodeGenerator::visit(ProgramNode &p_program) {
@@ -64,7 +63,8 @@ void CodeGenerator::visit(ProgramNode &p_program) {
     constexpr const char*const riscv_assembly_file_prologue =
         "    .file \"%s\"\n"
         "    .option nopic\n"
-        ".section    .text\n";
+        ".section    .text\n"
+        "    .align 2\n";
     // clang-format on
     emitInstructions(m_output_file.get(), riscv_assembly_file_prologue,
                      m_source_file_path.c_str());
@@ -76,7 +76,8 @@ void CodeGenerator::visit(ProgramNode &p_program) {
     auto visit_ast_node = [&](auto &ast_node) { ast_node->accept(*this); };
     for_each(p_program.getDeclNodes().begin(), p_program.getDeclNodes().end(),
              visit_ast_node);
-    emitInstructions(m_output_file.get(), ".section    .text\n");
+    emitInstructions(m_output_file.get(), ".section    .text\n"
+                                          "    .align 2\n");
     for_each(p_program.getFuncNodes().begin(), p_program.getFuncNodes().end(),
              visit_ast_node);
 

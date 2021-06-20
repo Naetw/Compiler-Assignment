@@ -7,6 +7,8 @@
 #include <map>
 #include <memory>
 
+int fclose(FILE *);
+
 class CodeGenerator final : public AstNodeVisitor {
   private:
     enum class CodegenContext : uint8_t {
@@ -14,10 +16,16 @@ class CodeGenerator final : public AstNodeVisitor {
         kLocal
     };
 
+    struct FileDeleter {
+        void operator()(FILE *fp) const {
+            fclose(fp);
+        }
+    };
+
   private:
     const SymbolManager *m_symbol_manager_ptr;
     std::string m_source_file_path;
-    std::unique_ptr<FILE> m_output_file;
+    std::unique_ptr<FILE, FileDeleter> m_output_file;
 
     std::stack<CodegenContext> m_context_stack;
 

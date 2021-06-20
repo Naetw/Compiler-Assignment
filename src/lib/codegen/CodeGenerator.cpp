@@ -7,6 +7,9 @@
 #include <cstdarg>
 #include <cstdio>
 
+// -4: return address, -8: frame pointer of the last stack
+constexpr const size_t kLocalVariableStartOffset = 12;
+
 CodeGenerator::CodeGenerator(const std::string source_file_name,
                              const std::string save_path,
                              const SymbolManager *const p_symbol_manager)
@@ -161,7 +164,7 @@ void CodeGenerator::visit(CompoundStatementNode &p_compound_statement) {
     m_context_stack.push(CodegenContext::kLocal);
 
     // start from 8 since 0-4, 4-8 are for return addr, last stack addr
-    m_local_var_offset = 8;
+    m_local_var_offset = kLocalVariableStartOffset;
     // TODO: need to store previous offset for multiple compound statement
 
     p_compound_statement.visitChildNodes(*this);

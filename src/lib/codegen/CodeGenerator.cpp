@@ -397,7 +397,17 @@ void CodeGenerator::visit(AssignmentNode &p_assignment) {
                                           "    sw t0, 0(t1)\n");
 }
 
-void CodeGenerator::visit(ReadNode &p_read) {}
+void CodeGenerator::visit(ReadNode &p_read) {
+    m_ref_to_value = false; 
+    p_read.visitChildNodes(*this);
+    
+    emitInstructions(
+        m_output_file.get(),
+        "    jal ra, readInt\n"
+        "    lw t0, 0(sp)\n"
+        "    addi sp, sp, 4\n"
+        "    sw a0, 0(t0)\n");
+}
 
 void CodeGenerator::visit(IfNode &p_if) {
     const auto if_body_label = m_label_sequence;
@@ -428,14 +438,74 @@ void CodeGenerator::visit(IfNode &p_if) {
     emitInstructions(m_output_file.get(), "L%u:\n", out_label);
 }
 
-void CodeGenerator::visit(WhileNode &p_while) {}
+void CodeGenerator::visit(WhileNode &p_while) {
+    const auto while_head_label = m_label_sequence;
+    const auto while_body_label = m_label_sequence + 1;
+    const auto while_out_label = m_label_sequence + 2;
+    m_label_sequence += 3;
+
+    emitInstructions(m_output_file.get(), "L%u:\n", while_head_label);
+    m_comp_branch_true_label = while_body_label;
+    m_comp_branch_false_label = while_out_label;
+    m_ref_to_value = true;
+    const_cast<ExpressionNode &>(p_while.getCondition()).accept(*this);
+
+    emitInstructions(m_output_file.get(), "L%u:\n", while_body_label);
+    const_cast<CompoundStatementNode &>(p_while.getBody()).accept(*this);
+    // TODO: cannot handle nested compound statements
+    emitInstructions(m_output_file.get(),
+                     "    j L%u\n"
+                     "L%u:\n",
+                     while_head_label, while_out_label);
+}
 
 void CodeGenerator::visit(ForNode &p_for) {
     m_symbol_manager_ptr->reconstructHashTableFromSymbolTable(
         p_for.getSymbolTable());
+    m_context_stack.push(CodegenContext::kLocal);
 
-    p_for.visitChildNodes(*this);
+    const_cast<DeclNode &>(p_for.getLoopVarDecl()).accept(*this);
+    const_cast<AssignmentNode &>(p_for.getLoopVarInitStmt()).accept(*this);
 
+    const auto for_head_label = m_label_sequence;
+    const auto for_body_label = m_label_sequence + 1;
+    const auto for_out_label = m_label_sequence + 2;
+    m_label_sequence += 3;
+
+    emitInstructions(m_output_file.get(), "L%u:\n", for_head_label);
+
+    // hand-written comparison
+    const auto *entry_ptr =
+        m_symbol_manager_ptr->lookup(p_for.getLoopVarName());
+    auto search = m_local_var_offset_map.find(entry_ptr);
+    assert(search != m_local_var_offset_map.end() &&
+           "Should have been defined before use");
+    emitInstructions(m_output_file.get(),
+                     "    lw t1, -%u(s0)\n"
+                     "    li t0, %u\n"
+                     "    blt t1, t0, L%u\n"
+                     "    j L%u\n",
+                     search->second,
+                     p_for.getUpperBound().getConstantPtr()->integer(),
+                     for_body_label, for_out_label);
+
+    emitInstructions(m_output_file.get(), "L%u:\n", for_body_label);
+    const_cast<CompoundStatementNode &>(p_for.getBody()).accept(*this);
+
+    // loop_var += 1 & jump back to head for condition check
+    emitInstructions(m_output_file.get(),
+                     "    lw t0, -%u(s0)\n"
+                     "    li t1, 1\n"
+                     "    add t0, t0, t1\n"
+                     "    sw t0, -%u(s0)\n",
+                     search->second, search->second);
+    // TODO: cannot handle nested compound statements
+    emitInstructions(m_output_file.get(),
+                     "    j L%u\n"
+                     "L%u:\n",
+                     for_head_label, for_out_label);
+
+    m_context_stack.pop();
     m_symbol_manager_ptr->removeSymbolsFromHashTable(p_for.getSymbolTable());
 }
 

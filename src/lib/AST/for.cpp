@@ -2,6 +2,11 @@
 
 #include <cassert>
 
+const std::string &ForNode::getLoopVarName() const {
+    const auto variable_it = m_loop_var_decl->getVariables().begin();
+    return (*variable_it)->getName();
+}
+
 const ConstantValueNode &ForNode::getLowerBound() const {
     const auto *const lower_ptr =
         dynamic_cast<const ConstantValueNode *>(&m_init_stmt->getExpr());

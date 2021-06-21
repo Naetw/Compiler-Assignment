@@ -30,6 +30,15 @@ class ForNode final : public AstNode {
     const ConstantValueNode &getLowerBound() const;
     const ConstantValueNode &getUpperBound() const;
 
+    const std::string &getLoopVarName() const;
+
+    const DeclNode &getLoopVarDecl() const { return *m_loop_var_decl.get(); }
+    const AssignmentNode &getLoopVarInitStmt() const {
+        return *m_init_stmt.get();
+    }
+    const CompoundStatementNode &getBody() const { return *m_body.get(); }
+
+
     const SymbolTable *getSymbolTable() const { return m_symbol_table_ptr; }
     void setSymbolTable(const SymbolTable *p_symbol_table) {
         m_symbol_table_ptr = p_symbol_table;

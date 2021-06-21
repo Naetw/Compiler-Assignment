@@ -35,6 +35,8 @@ class CodeGenerator final : public AstNodeVisitor {
     bool m_ref_to_value = false;
 
     size_t m_label_sequence = 1;
+    size_t m_comp_branch_true_label = 0;
+    size_t m_comp_branch_false_label = 0;
 
   public:
     ~CodeGenerator() = default;

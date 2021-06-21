@@ -83,6 +83,8 @@ void CodeGenerator::visit(ProgramNode &p_program) {
 
     emitInstructions(m_output_file.get(), kFixedFunctionPrologue, "main",
                      "main", "main");
+    // start from 8 since 0-4, 4-8 are for return addr, last stack addr
+    m_local_var_offset = kLocalVariableStartOffset;
     const_cast<CompoundStatementNode &>(p_program.getBody()).accept(*this);
     emitInstructions(m_output_file.get(), kFixedFunctionEpilogue, "main",
                      "main");
@@ -186,6 +188,7 @@ void CodeGenerator::visit(FunctionNode &p_function) {
                      p_function.getNameCString(), p_function.getNameCString(),
                      p_function.getNameCString());
 
+    // start from 8 since 0-4, 4-8 are for return addr, last stack addr
     m_local_var_offset = kLocalVariableStartOffset;
 
     auto visit_ast_node = [&](auto &ast_node) { ast_node->accept(*this); };
@@ -208,10 +211,6 @@ void CodeGenerator::visit(CompoundStatementNode &p_compound_statement) {
     m_symbol_manager_ptr->reconstructHashTableFromSymbolTable(
         p_compound_statement.getSymbolTable());
     m_context_stack.push(CodegenContext::kLocal);
-
-    // start from 8 since 0-4, 4-8 are for return addr, last stack addr
-    m_local_var_offset = kLocalVariableStartOffset;
-    // TODO: need to store previous offset for multiple compound statement
 
     p_compound_statement.visitChildNodes(*this);
 
